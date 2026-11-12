@@ -1,0 +1,942 @@
+openapi: 3.0.3
+info:
+  title: iKhethelo Digital API
+  version: 1.1.0
+  description: |
+    Shared IKhethelo.Digital.Api HTTP contract including tenant administration.
+    Reconciled with database/ikhethelo_digital_postgresql_baseline.sql.
+    Names require 2-100 trimmed characters; email limit is 320. Canonical E.164
+    phone validation is intentionally narrower than SQL varchar(50).
+    Public alias eshlahleni resolves server-side to ESHL. No DTO accepts/returns TenantId.
+    Protected routes require active identity and tenant. TenantAdmin must match the
+    selected tenant; IKhetheloAdmin needs explicit CrossTenantMembership policy and
+    audited tenant selection, including reads. No implicit all-tenant operations.
+    Reject unknown request properties. JSON write bodies are limited to 16 KiB.
+    Malformed transport and unknown properties are 400; field/business validation is 422; racing state is 409.
+    TenantAdmin manages TenantAdmin accounts within its assigned tenant. Internal
+    administrator management requires a separate explicit AdminUserManagement tenant grant.
+    All timestamps are UTC RFC3339. Lists are tenant-scoped before filtering/counting.
+servers:
+  - url: /
+    description: Same API origin; deployment origin configured by consumers
+tags:
+  - name: Public membership
+  - name: Authentication
+  - name: Applications
+  - name: Members
+  - name: Administrators
+  - name: Membership categories
+security:
+  - BearerAuth: []
+paths:
+  /api/v1/public/{tenantCode}/membership-applications:
+    parameters:
+      - $ref: '#/components/parameters/TenantCode'
+    post:
+      operationId: submitMembershipApplication
+      tags: [Public membership]
+      summary: Submit an application without an applicant account
+      description: |
+        Resolve active tenant server-side. Require age 18+ for ESHL on the current
+        Africa/Johannesburg date; DateOnly.AddYears(18) anniversary semantics.
+        Normalize email/phone. Either awaiting-registration or Active-member normalized email OR phone collision
+        in this tenant returns generic 409. Create AwaitingInPersonCompletion and return only safe fields.
+        No public application lookup is exposed; 201 does not imply a public GET URL.
+        Registration and its audit commit before a registration-received email is attempted.
+        Email failure is logged without changing the successful 201 registration result.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ApplicationSubmission'}
+      responses:
+        '201':
+          description: AwaitingInPersonCompletion application persisted
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SubmissionReceipt'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '413': {$ref: '#/components/responses/TooLarge'}
+        '415': {$ref: '#/components/responses/UnsupportedMedia'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /api/v1/auth/login:
+    post:
+      operationId: authenticateAdministrator
+      tags: [Authentication]
+      summary: Authenticate an active AdminUser
+      description: |
+        Uses Microsoft IPasswordHasher<AdminUser>. The baseline globally constrains
+        normalized administrator email. Invalid/inactive credentials return generic
+        401. No refresh token.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/LoginRequest'}
+      responses:
+        '200':
+          description: Short-lived access token; never log the response
+          headers:
+            Cache-Control:
+              description: Always no-store
+              schema: {type: string, enum: [no-store]}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TokenResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '413': {$ref: '#/components/responses/TooLarge'}
+        '415': {$ref: '#/components/responses/UnsupportedMedia'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /api/v1/admin/tenants/{tenantCode}/membership-applications:
+    parameters:
+      - $ref: '#/components/parameters/TenantCode'
+    get:
+      operationId: getMembershipApplications
+      tags: [Applications]
+      summary: List applications in the authorized selected tenant
+      description: Search names, email or phone; newest submittedAtUtc first, then id ascending. Search normalization follows MASTER_SPEC. No cross-tenant counts.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Search'
+        - name: status
+          in: query
+          schema: {$ref: '#/components/schemas/ApplicationStatus'}
+      responses:
+        '200':
+          description: Application page
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApplicationPage'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /api/v1/admin/tenants/{tenantCode}/membership-applications/{applicationId}:
+    parameters:
+      - $ref: '#/components/parameters/TenantCode'
+      - $ref: '#/components/parameters/ApplicationId'
+    get:
+      operationId: getMembershipApplication
+      tags: [Applications]
+      summary: Inspect an application in the authorized selected tenant
+      responses:
+        '200':
+          description: Application details without internal audit fields or review notes
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Application'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /api/v1/admin/tenants/{tenantCode}/membership-applications/{applicationId}/activate:
+    parameters:
+      - $ref: '#/components/parameters/TenantCode'
+      - $ref: '#/components/parameters/ApplicationId'
+    post:
+      operationId: activateMembership
+      tags: [Applications]
+      summary: Activate after the R100 membership step is completed in person
+      description: |
+        Check tenant and active-member identity conflicts, allocate member_number_seq,
+        format ESC-xxxxx for ESHL (minimum five digits), create Member, set review
+        metadata and write AuditLog in one transaction. Repeated/racing activation is 409. Email failure is logged and does not reverse activation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ReviewRequest'}
+      responses:
+        '200':
+          description: Active member created, member number issued and activation email attempted after commit
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Member'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '413': {$ref: '#/components/responses/TooLarge'}
+        '415': {$ref: '#/components/responses/UnsupportedMedia'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /api/v1/admin/tenants/{tenantCode}/members:
+    parameters:
+      - $ref: '#/components/parameters/TenantCode'
+    post:
+      operationId: registerMember
+      tags: [Members]
+      summary: Complete in-person membership registration with consent and a completed registration snapshot
+      description: Existing online registration must use activation instead. Confirm the R100 in-person step before using this endpoint. Member creation and audits commit together; activation email is attempted after commit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/MemberRegistration'}
+      responses:
+        '201':
+          description: Registered member
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Member'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '413': {$ref: '#/components/responses/TooLarge'}
+        '415': {$ref: '#/components/responses/UnsupportedMedia'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        '500': {$ref: '#/components/responses/ServerError'}
+    get:
+      operationId: getMembers
+      tags: [Members]
+      summary: List members in the authorized selected tenant
+      description: Search names, email, phone or member number; newest joinedAtUtc first, then id ascending.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Search'
+        - name: status
+          in: query
+          schema: {$ref: '#/components/schemas/MemberStatus'}
+      responses:
+        '200':
+          description: Member page
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/MemberPage'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /api/v1/admin/tenants/{tenantCode}/members/{memberId}:
+    parameters:
+      - $ref: '#/components/parameters/TenantCode'
+      - $ref: '#/components/parameters/MemberId'
+    get:
+      operationId: getMember
+      tags: [Members]
+      summary: Inspect a member in the authorized selected tenant
+      responses:
+        '200':
+          description: Member details
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Member'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/ServerError'}
+    put:
+      operationId: updateMember
+      tags: [Members]
+      summary: Replace allowed member name and contact details
+      description: |
+        All four fields required. Do not mutate source application, tenant, member
+        number, birth date, joined time or status. Normalize contacts and recheck
+        active-member conflicts. Mutation and required audit commit together.
+        Concurrent detail edits use last committed write; activation/state conflicts are 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/MemberUpdate'}
+      responses:
+        '200':
+          description: Updated member
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Member'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '413': {$ref: '#/components/responses/TooLarge'}
+        '415': {$ref: '#/components/responses/UnsupportedMedia'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /api/v1/admin/tenants/{tenantCode}/members/{memberId}/status:
+    parameters:
+      - $ref: '#/components/parameters/TenantCode'
+      - $ref: '#/components/parameters/MemberId'
+    put:
+      operationId: updateMemberStatus
+      tags: [Members]
+      summary: Set an allowed member status atomically with required audit
+      description: |
+        Permits transitions between any declared statuses. Reactivation checks
+        active-member identity conflicts. Setting current status succeeds unchanged.
+        Allowed values match the baseline CHECK; transitions are application policy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/MemberStatusUpdate'}
+      responses:
+        '200':
+          description: Member with requested status
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Member'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '413': {$ref: '#/components/responses/TooLarge'}
+        '415': {$ref: '#/components/responses/UnsupportedMedia'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /api/v1/admin-users:
+    parameters:
+      - $ref: '#/components/parameters/AdminTenantSelection'
+    get:
+      operationId: listAdministrators
+      tags: [Administrators]
+      summary: Search tenant administrators; internal reads are audited
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Search'
+        - {name: isActive, in: query, schema: {type: boolean}}
+      responses:
+        '200':
+          description: Administrator page; Cache-Control no-store
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AdminPage'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/ServerError'}
+    post:
+      operationId: createAdministrator
+      tags: [Administrators]
+      summary: Create an active TenantAdmin in the authorized tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AdminCreate'}
+      responses:
+        '201': {$ref: '#/components/responses/Administrator'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '413': {$ref: '#/components/responses/TooLarge'}
+        '415': {$ref: '#/components/responses/UnsupportedMedia'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /api/v1/admin-users/{id}:
+    parameters:
+      - $ref: '#/components/parameters/AdminTenantSelection'
+      - $ref: '#/components/parameters/Id'
+    get:
+      operationId: getAdministrator
+      tags: [Administrators]
+      summary: View an administrator in the authorized tenant
+      responses:
+        '200': {$ref: '#/components/responses/Administrator'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/ServerError'}
+    put:
+      operationId: updateAdministrator
+      tags: [Administrators]
+      summary: Replace administrator email and permitted role; invalidate existing tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AdminUpdate'}
+      responses:
+        '200': {$ref: '#/components/responses/Administrator'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '413': {$ref: '#/components/responses/TooLarge'}
+        '415': {$ref: '#/components/responses/UnsupportedMedia'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /api/v1/admin-users/{id}/status:
+    parameters:
+      - $ref: '#/components/parameters/AdminTenantSelection'
+      - $ref: '#/components/parameters/Id'
+    patch:
+      operationId: setAdministratorStatus
+      tags: [Administrators]
+      summary: Activate or deactivate; prevent self-deactivation and removal of the last active admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AdminStatusUpdate'}
+      responses:
+        '200': {$ref: '#/components/responses/Administrator'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '413': {$ref: '#/components/responses/TooLarge'}
+        '415': {$ref: '#/components/responses/UnsupportedMedia'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /api/v1/admin-users/{id}/reset-password:
+    parameters:
+      - $ref: '#/components/parameters/AdminTenantSelection'
+      - $ref: '#/components/parameters/Id'
+    post:
+      operationId: resetAdministratorPassword
+      tags: [Administrators]
+      summary: Replace password securely and revoke all existing tokens for the target account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AdminPasswordReset'}
+      responses:
+        '204': {description: Password reset and audit committed; no password or token returned}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '413': {$ref: '#/components/responses/TooLarge'}
+        '415': {$ref: '#/components/responses/UnsupportedMedia'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /api/v1/admin/tenants/{tenantCode}/membership-categories:
+    parameters:
+      - $ref: '#/components/parameters/TenantCode'
+    get:
+      operationId: listMembershipCategories
+      tags: [Membership categories]
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Search'
+        - {name: status, in: query, schema: {type: string, enum: [Active, Inactive]}}
+      responses:
+        '200':
+          description: Category page
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CategoryPage'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/ServerError'}
+    post:
+      operationId: createMembershipCategory
+      tags: [Membership categories]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CategoryWrite'}
+      responses:
+        '201': {$ref: '#/components/responses/Category'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '413': {$ref: '#/components/responses/TooLarge'}
+        '415': {$ref: '#/components/responses/UnsupportedMedia'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /api/v1/admin/tenants/{tenantCode}/membership-categories/{id}:
+    parameters:
+      - $ref: '#/components/parameters/TenantCode'
+      - $ref: '#/components/parameters/Id'
+    put:
+      operationId: updateMembershipCategory
+      tags: [Membership categories]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CategoryWrite'}
+      responses:
+        '200': {$ref: '#/components/responses/Category'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '413': {$ref: '#/components/responses/TooLarge'}
+        '415': {$ref: '#/components/responses/UnsupportedMedia'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /api/v1/admin/tenants/{tenantCode}/members/{memberId}/category:
+    parameters:
+      - $ref: '#/components/parameters/TenantCode'
+      - $ref: '#/components/parameters/MemberId'
+    get:
+      operationId: getMemberCategory
+      tags: [Members]
+      responses:
+        '200': {$ref: '#/components/responses/MemberCategory'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/ServerError'}
+    put:
+      operationId: setMemberCategory
+      tags: [Members]
+      summary: Assign an active tenant category or null to remove the assignment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/MemberCategoryUpdate'}
+      responses:
+        '200': {$ref: '#/components/responses/MemberCategory'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '413': {$ref: '#/components/responses/TooLarge'}
+        '415': {$ref: '#/components/responses/UnsupportedMedia'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /api/v1/admin/tenants/{tenantCode}/members/{memberId}/history:
+    parameters:
+      - $ref: '#/components/parameters/TenantCode'
+      - $ref: '#/components/parameters/MemberId'
+    get:
+      operationId: getMemberHistory
+      tags: [Members]
+      summary: Paginated registration and change audit history; newest first
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Safe member history page; legacy events may have no before/after metadata
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/MemberHistoryPage'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/ServerError'}
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Validated AdminUser JWT; enforce role, active tenant and explicit tenant authorization policies.
+  parameters:
+    AdminTenantSelection:
+      name: tenantCode
+      in: query
+      description: Optional for TenantAdmin (defaults to assigned tenant); required for internal admins with an explicit AdminUserManagement grant.
+      schema: {type: string, maxLength: 50, example: ESHL}
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    TenantCode:
+      name: tenantCode
+      in: path
+      required: true
+      description: Public requests require a configured alias (eshlahleni maps to ESHL). Administrative routes also accept canonical tenant codes such as ESHL. Never an internal UUID or authorization grant.
+      schema: {type: string, pattern: '^[A-Za-z][A-Za-z0-9-]{0,49}$', example: eshlahleni}
+    ApplicationId:
+      name: applicationId
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    MemberId:
+      name: memberId
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    Page:
+      name: page
+      in: query
+      schema: {type: integer, minimum: 1, default: 1, maximum: 2147483647}
+    PageSize:
+      name: pageSize
+      in: query
+      schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+    Search:
+      name: search
+      in: query
+      description: Trimmed case-insensitive literal substring; no regex/wildcards. Empty means no search. Contact search uses canonical normalization where applicable.
+      schema: {type: string, maxLength: 320}
+  schemas:
+    AdminCreate:
+      type: object
+      additionalProperties: false
+      required: [email, password, role]
+      properties:
+        email: {$ref: '#/components/schemas/Email'}
+        password: {type: string, minLength: 12, maxLength: 128, writeOnly: true}
+        role: {type: string, enum: [TenantAdmin]}
+    AdminUpdate:
+      type: object
+      additionalProperties: false
+      required: [email, role]
+      properties:
+        email: {$ref: '#/components/schemas/Email'}
+        role: {type: string, enum: [TenantAdmin]}
+    AdminStatusUpdate:
+      type: object
+      additionalProperties: false
+      required: [isActive]
+      properties:
+        isActive: {type: boolean}
+    AdminPasswordReset:
+      type: object
+      additionalProperties: false
+      required: [newPassword]
+      properties:
+        newPassword: {type: string, minLength: 12, maxLength: 128, writeOnly: true}
+    Administrator:
+      type: object
+      additionalProperties: false
+      required: [id, email, role, isActive, createdAtUtc, updatedAtUtc]
+      properties:
+        id: {type: string, format: uuid}
+        email: {$ref: '#/components/schemas/Email'}
+        role: {type: string, enum: [TenantAdmin]}
+        isActive: {type: boolean}
+        createdAtUtc: {type: string, format: date-time}
+        updatedAtUtc: {type: string, format: date-time}
+        lastLoginAtUtc: {type: string, format: date-time, nullable: true}
+    AdminPage:
+      type: object
+      required: [items, page, pageSize, totalCount]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/Administrator'}}
+        page: {type: integer}
+        pageSize: {type: integer}
+        totalCount: {type: integer, format: int64}
+    MemberRegistration:
+      type: object
+      additionalProperties: false
+      required: [firstName, lastName, dateOfBirth, phoneNumber, email, termsAccepted, privacyConsent]
+      properties:
+        firstName: {$ref: '#/components/schemas/Name'}
+        lastName: {$ref: '#/components/schemas/Name'}
+        dateOfBirth: {type: string, format: date}
+        phoneNumber: {$ref: '#/components/schemas/Phone'}
+        email: {$ref: '#/components/schemas/Email'}
+        termsAccepted: {type: boolean, enum: [true]}
+        privacyConsent: {type: boolean, enum: [true]}
+        categoryId: {type: string, format: uuid, nullable: true}
+    CategoryWrite:
+      type: object
+      additionalProperties: false
+      required: [name, isActive]
+      properties:
+        name: {type: string, minLength: 2, maxLength: 100}
+        isActive: {type: boolean}
+    MembershipCategory:
+      type: object
+      required: [id, name, isActive]
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string}
+        isActive: {type: boolean}
+    CategoryPage:
+      type: object
+      required: [items, page, pageSize, totalCount]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/MembershipCategory'}}
+        page: {type: integer}
+        pageSize: {type: integer}
+        totalCount: {type: integer, format: int64}
+    MemberCategoryUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        categoryId: {type: string, format: uuid, nullable: true}
+    MemberCategory:
+      type: object
+      required: [memberId]
+      properties:
+        memberId: {type: string, format: uuid}
+        categoryId: {type: string, format: uuid, nullable: true}
+        categoryName: {type: string, nullable: true}
+    MemberHistoryEntry:
+      type: object
+      required: [id, action, createdAtUtc]
+      properties:
+        id: {type: string, format: uuid}
+        action: {type: string}
+        actorAdminUserId: {type: string, format: uuid, nullable: true}
+        createdAtUtc: {type: string, format: date-time}
+        previousStatus: {type: string, nullable: true}
+        status: {type: string, nullable: true}
+        previousCategoryId: {type: string, format: uuid, nullable: true}
+        categoryId: {type: string, format: uuid, nullable: true}
+    MemberHistoryPage:
+      type: object
+      required: [items, page, pageSize, totalCount]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/MemberHistoryEntry'}}
+        page: {type: integer}
+        pageSize: {type: integer}
+        totalCount: {type: integer, format: int64}
+    Name:
+      type: string
+      minLength: 2
+      maxLength: 100
+      pattern: '^\S(?:[\s\S]*\S)$'
+      description: Trim before validation/storage; require 2-100 trimmed characters. Preserve Unicode names and punctuation.
+    Email:
+      type: string
+      format: email
+      minLength: 3
+      maxLength: 320
+      description: Trim; invariant uppercase for normalized comparison. Matches baseline varchar(320); normalized value must also fit.
+    Phone:
+      type: string
+      pattern: '^\+[1-9][0-9]{7,14}$'
+      maxLength: 16
+      description: Canonical international E.164 representation; no spaces.
+    ApplicationStatus:
+      type: string
+      enum: [AwaitingInPersonCompletion, Completed, LegacyClosed]
+      description: LegacyClosed is read-only historical data. New registrations await in-person completion; activation marks them Completed.
+    MemberStatus:
+      type: string
+      enum: [Active, Suspended, Inactive]
+      description: Matches ck_members_status. Newly activated members are Active.
+    ApplicationSubmission:
+      type: object
+      additionalProperties: false
+      required: [firstName, lastName, dateOfBirth, phoneNumber, email, termsAccepted, privacyConsent]
+      properties:
+        firstName: {$ref: '#/components/schemas/Name'}
+        lastName: {$ref: '#/components/schemas/Name'}
+        dateOfBirth:
+          type: string
+          format: date
+          description: Real calendar date, not future; ESHL 18+ validation is server authoritative.
+        phoneNumber: {$ref: '#/components/schemas/Phone'}
+        email: {$ref: '#/components/schemas/Email'}
+        termsAccepted: {type: boolean, enum: [true]}
+        privacyConsent: {type: boolean, enum: [true]}
+    SubmissionReceipt:
+      type: object
+      additionalProperties: false
+      required: [applicationId, status, submittedAtUtc, message]
+      properties:
+        applicationId: {type: string, format: uuid}
+        status: {type: string, enum: [AwaitingInPersonCompletion]}
+        submittedAtUtc: {type: string, format: date-time}
+        message: {type: string, example: Your registration has been received.}
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email: {$ref: '#/components/schemas/Email'}
+        password: {type: string, format: password, minLength: 1, maxLength: 1024, writeOnly: true}
+    TokenResponse:
+      type: object
+      additionalProperties: false
+      required: [accessToken, tokenType, expiresIn]
+      properties:
+        accessToken: {type: string, description: Sensitive signed JWT. Never log.}
+        tokenType: {type: string, enum: [Bearer]}
+        expiresIn: {type: integer, enum: [900], description: Seconds until access token expiry.}
+    ReviewRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reviewNotes: {type: string, minLength: 1, maxLength: 2000, description: Optional internal review input; omit when absent. Not returned in response DTOs.}
+    Application:
+      type: object
+      additionalProperties: false
+      required: [applicationId, firstName, lastName, dateOfBirth, phoneNumber, email, termsAccepted, privacyConsent, status, submittedAtUtc]
+      properties:
+        applicationId: {type: string, format: uuid}
+        firstName: {$ref: '#/components/schemas/Name'}
+        lastName: {$ref: '#/components/schemas/Name'}
+        dateOfBirth: {type: string, format: date}
+        phoneNumber: {$ref: '#/components/schemas/Phone'}
+        email: {$ref: '#/components/schemas/Email'}
+        termsAccepted: {type: boolean, enum: [true]}
+        privacyConsent: {type: boolean, enum: [true]}
+        status: {$ref: '#/components/schemas/ApplicationStatus'}
+        submittedAtUtc: {type: string, format: date-time}
+    MemberUpdate:
+      type: object
+      additionalProperties: false
+      required: [firstName, lastName, phoneNumber, email]
+      properties:
+        firstName: {$ref: '#/components/schemas/Name'}
+        lastName: {$ref: '#/components/schemas/Name'}
+        phoneNumber: {$ref: '#/components/schemas/Phone'}
+        email: {$ref: '#/components/schemas/Email'}
+    MemberStatusUpdate:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status: {$ref: '#/components/schemas/MemberStatus'}
+    Member:
+      type: object
+      additionalProperties: false
+      description: Member detail projection from baseline fields; excludes internal tenant, normalized contact and audit fields.
+      required: [memberId, applicationId, memberNumber, firstName, lastName, dateOfBirth, phoneNumber, email, status, joinedAtUtc]
+      properties:
+        memberId: {type: string, format: uuid}
+        applicationId: {type: string, format: uuid}
+        memberNumber: {type: string, example: ESC-00001}
+        firstName: {$ref: '#/components/schemas/Name'}
+        lastName: {$ref: '#/components/schemas/Name'}
+        dateOfBirth: {type: string, format: date}
+        phoneNumber: {$ref: '#/components/schemas/Phone'}
+        email: {$ref: '#/components/schemas/Email'}
+        status: {$ref: '#/components/schemas/MemberStatus'}
+        joinedAtUtc: {type: string, format: date-time}
+    ApplicationPage:
+      type: object
+      additionalProperties: false
+      required: [items, page, pageSize, totalCount]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/Application'}}
+        page: {type: integer, minimum: 1}
+        pageSize: {type: integer, minimum: 1, maximum: 100}
+        totalCount: {type: integer, format: int64, minimum: 0}
+    MemberPage:
+      type: object
+      additionalProperties: false
+      required: [items, page, pageSize, totalCount]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/Member'}}
+        page: {type: integer, minimum: 1}
+        pageSize: {type: integer, minimum: 1, maximum: 100}
+        totalCount: {type: integer, format: int64, minimum: 0}
+    ProblemDetails:
+      type: object
+      required: [type, title, status]
+      description: Safe RFC Problem Details; extensions must not disclose secrets, PII or internal exceptions.
+      properties:
+        type: {type: string, format: uri, example: 'about:blank'}
+        title: {type: string}
+        status: {type: integer, minimum: 400, maximum: 599}
+        detail: {type: string}
+        instance: {type: string, description: Safe request path or opaque occurrence reference.}
+        traceId: {type: string, description: Opaque support correlation identifier.}
+    ValidationProblemDetails:
+      allOf:
+        - $ref: '#/components/schemas/ProblemDetails'
+        - type: object
+          required: [errors]
+          properties:
+            errors:
+              type: object
+              description: CamelCase DTO field names mapped to safe validation messages; use request for a whole-body issue.
+              additionalProperties:
+                type: array
+                items: {type: string}
+  responses:
+    Administrator:
+      description: Safe administrator details; Cache-Control no-store; never includes hashes, passwords or tenant IDs
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Administrator'}
+    Category:
+      description: Membership category
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/MembershipCategory'}
+    MemberCategory:
+      description: Current membership category assignment
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/MemberCategory'}
+    BadRequest:
+      description: Malformed JSON, type, path or query syntax
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetails'}
+    Unauthorized:
+      description: Missing/invalid/expired token, or invalid/inactive login credentials
+      headers:
+        WWW-Authenticate:
+          description: Bearer challenge on protected routes
+          schema: {type: string}
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetails'}
+    Forbidden:
+      description: Authenticated identity lacks required role/policy or selected tenant access
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetails'}
+    NotFound:
+      description: Unknown/inactive tenant or resource absent from authorized tenant scope
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetails'}
+    Conflict:
+      description: Generic duplicate, active-member identity conflict or incompatible/concurrent business state
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetails'}
+    TooLarge:
+      description: JSON body exceeds 16 KiB
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetails'}
+    UnsupportedMedia:
+      description: Write body must use application/json
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetails'}
+    ValidationFailed:
+      description: Parsed request fails required fields, lengths, formats, consent, date, age or business validation
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ValidationProblemDetails'}
+    RateLimited:
+      description: Public submission or login rate limit exceeded
+      headers:
+        Retry-After:
+          description: Seconds until retry is allowed
+          schema: {type: integer, minimum: 1}
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetails'}
+    ServerError:
+      description: Safe unexpected failure; no internal details
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/ProblemDetails'}

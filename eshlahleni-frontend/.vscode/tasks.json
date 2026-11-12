@@ -1,0 +1,21 @@
+﻿{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Frontend: start",
+      "type": "shell",
+      "command": "powershell",
+      "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/Start-Frontend.ps1"],
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    { "label": "Frontend: tests", "type": "npm", "script": "test", "problemMatcher": [] },
+    {
+      "label": "Frontend: production build",
+      "type": "npm",
+      "script": "build",
+      "group": "build",
+      "problemMatcher": []
+    }
+  ]
+}

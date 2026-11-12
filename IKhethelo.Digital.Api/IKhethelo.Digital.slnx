@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/IKhethelo.Digital.Api/IKhethelo.Digital.Api.csproj" />
+    <Project Path="src/IKhethelo.Digital.Application/IKhethelo.Digital.Application.csproj" />
+    <Project Path="src/IKhethelo.Digital.Domain/IKhethelo.Digital.Domain.csproj" />
+    <Project Path="src/IKhethelo.Digital.Infrastructure/IKhethelo.Digital.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/IKhethelo.Digital.Tests/IKhethelo.Digital.Tests.csproj" />
+  </Folder>
+</Solution>

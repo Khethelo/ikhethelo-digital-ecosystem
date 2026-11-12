@@ -1,0 +1,59 @@
+using IKhethelo.Digital.Application;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+
+namespace IKhethelo.Digital.Api.Controllers;
+
+[ApiController]
+[Route("api/v1/public/{tenantCode}/membership-applications")]
+public sealed class SubmissionController(ISubmitMembershipApplication submit) : ControllerBase
+{
+    [HttpPost, AllowAnonymous, EnableRateLimiting("PublicSubmission")]
+    public async Task<IActionResult> Submit(ApplicationSubmission request, CancellationToken ct) => StatusCode(201, await submit.ExecuteAsync(request, ct));
+}
+
+[ApiController]
+[Route("api/v1/auth")]
+public sealed class AuthenticationController(IAdministratorAuthentication authentication) : ControllerBase
+{
+    [HttpPost("login"), AllowAnonymous, EnableRateLimiting("Login")]
+    public async Task<IActionResult> Login(LoginRequest request, CancellationToken ct)
+    {
+        Response.Headers.CacheControl = "no-store";
+        return Ok(await authentication.ExecuteAsync(request, ct));
+    }
+}
+
+[ApiController, Authorize(Policy = "MembershipAccess")]
+[Route("api/v1/admin/tenants/{tenantCode}/membership-applications")]
+public sealed class ApplicationsController(IMembershipQueries queries, IReviewApplications review) : ControllerBase
+{
+    [HttpGet]
+    public async Task<IActionResult> List([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null,
+        [FromQuery] string? status = null, CancellationToken ct = default) => Ok(await queries.ApplicationsAsync(new(page, pageSize, search, status), ct));
+    [HttpGet("{applicationId}")]
+    public async Task<IActionResult> Get(string applicationId, CancellationToken ct) => Ok(await queries.ApplicationAsync(ResourceId.Parse(applicationId), ct));
+    [HttpPost("{applicationId}/activate")]
+    public async Task<IActionResult> Activate(string applicationId, ReviewRequest request, CancellationToken ct) => Ok(await review.ActivateAsync(ResourceId.Parse(applicationId), request, ct));
+}
+
+[ApiController, Authorize(Policy = "MembershipAccess")]
+[Route("api/v1/admin/tenants/{tenantCode}/members")]
+public sealed class MembersController(IMembershipQueries queries, IMemberAdministration administration) : ControllerBase
+{
+    [HttpGet]
+    public async Task<IActionResult> List([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null,
+        [FromQuery] string? status = null, CancellationToken ct = default) => Ok(await queries.MembersAsync(new(page, pageSize, search, status), ct));
+    [HttpGet("{memberId}")]
+    public async Task<IActionResult> Get(string memberId, CancellationToken ct) => Ok(await queries.MemberAsync(ResourceId.Parse(memberId), ct));
+    [HttpPut("{memberId}")]
+    public async Task<IActionResult> Update(string memberId, MemberUpdate request, CancellationToken ct) => Ok(await administration.UpdateAsync(ResourceId.Parse(memberId), request, ct));
+    [HttpPut("{memberId}/status")]
+    public async Task<IActionResult> Status(string memberId, MemberStatusUpdate request, CancellationToken ct) => Ok(await administration.StatusAsync(ResourceId.Parse(memberId), request, ct));
+}
+
+internal static class ResourceId
+{
+    public static Guid Parse(string value) => Guid.TryParse(value, out var id) ? id : throw new RequestFailure(400, "Invalid resource identifier.");
+}

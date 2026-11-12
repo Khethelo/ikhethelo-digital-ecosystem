@@ -1,0 +1,37 @@
+# .NET / Visual Studio
+**/bin/
+**/obj/
+.vs/
+*.user
+*.suo
+
+# Node / Angular
+**/node_modules/
+**/dist/
+**/.angular/
+**/coverage/
+**/.cache/
+
+# Local tools and temporary files
+.frontend-tools/
+.verification/
+*.log
+*.tmp
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+**/appsettings.Development.json
+**/appsettings.Production.json
+**/secrets.json
+*.pfx
+*.p12
+*.pem
+*.key
+
+# Operating system
+.DS_Store
+Thumbs.db
+
+**/appsettings.json

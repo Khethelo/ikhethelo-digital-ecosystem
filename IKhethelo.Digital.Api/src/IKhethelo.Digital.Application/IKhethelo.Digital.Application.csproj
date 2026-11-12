@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup><ProjectReference Include="../IKhethelo.Digital.Domain/IKhethelo.Digital.Domain.csproj" /></ItemGroup>
+</Project>

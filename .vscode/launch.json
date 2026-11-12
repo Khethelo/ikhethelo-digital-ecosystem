@@ -1,0 +1,32 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Frontend",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./Start-Frontend.ps1",
+      "cwd": "${workspaceFolder}/eshlahleni-frontend",
+      "env": { "NO_COLOR": "1" },
+      "serverReadyAction": {
+        "pattern": "Local:\\s+(http://localhost:[0-9]+)",
+        "uriFormat": "%s",
+        "action": "openExternally"
+      }
+    },
+    {
+      "name": "Backend",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "dotnet run --project src/IKhethelo.Digital.Api --launch-profile IKhethelo.Digital.Api",
+      "cwd": "${workspaceFolder}/IKhethelo.Digital.Api"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Run frontend + backend",
+      "configurations": ["Backend", "Frontend"],
+      "stopAll": true
+    }
+  ]
+}
