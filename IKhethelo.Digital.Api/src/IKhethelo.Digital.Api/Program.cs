@@ -59,6 +59,8 @@ builder.Services.AddScoped<IAdminUserManagement, AdminUserManagement>();
 builder.Services.AddScoped<BootstrapAdministrator>();
 builder.Services.AddScoped<ExistingDatabaseAdoption>();
 builder.Services.AddScoped<IMemberOperations, MemberOperations>();
+builder.Services.AddScoped<INtmOperations, IKhethelo.Digital.Infrastructure.Ntm.NtmOperations>();
+builder.Services.AddScoped<IAuthorizationHandler, NtmAccessHandler>();
 builder.Services.AddScoped<IAuthorizationHandler, TenantPolicyHandler>();
 builder.Services.AddScoped<IAuthorizationHandler, AdministratorManagementHandler>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
@@ -98,6 +100,7 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("TenantMembership", policy => policy.RequireAuthenticatedUser().AddRequirements(new TenantPolicyRequirement(false)));
     options.AddPolicy("CrossTenantMembership", policy => policy.RequireAuthenticatedUser().AddRequirements(new TenantPolicyRequirement(true)));
     options.AddPolicy("MembershipAccess", policy => policy.RequireAuthenticatedUser().AddRequirements(new TenantPolicyRequirement(null)));
+    options.AddPolicy("NtmAccess", policy => policy.RequireAuthenticatedUser().AddRequirements(new NtmAccessRequirement()));
     options.AddPolicy("AdministratorManagement", policy => policy.RequireAuthenticatedUser().AddRequirements(new AdministratorManagementRequirement()));
 });
 builder.Services.AddControllers(options => options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true)

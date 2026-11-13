@@ -15,6 +15,9 @@ public sealed class TenantRouting
     // Trusted configuration grants specific administrators access to specific tenant codes.
     public Dictionary<string, string[]> CrossTenantMembership { get; set; } = new();
     public Dictionary<string, string[]> AdminUserManagement { get; set; } = new();
+    public Dictionary<string, string[]> CrossTenantNtm { get; set; } = new();
+    // Explicit opt-in prevents exposing a provisional schema in existing installations.
+    public string[] NtmTenantCodes { get; set; } = [];
 }
 
 public sealed class TenantScopeMiddleware(RequestDelegate next)
@@ -58,6 +61,23 @@ public sealed class TenantScopeMiddleware(RequestDelegate next)
 }
 
 public sealed record AdministratorManagementRequirement : IAuthorizationRequirement;
+public sealed record NtmAccessRequirement : IAuthorizationRequirement;
+public sealed class NtmAccessHandler(ITenantContext tenant, TenantRouting routing) : AuthorizationHandler<NtmAccessRequirement>
+{
+    protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, NtmAccessRequirement requirement)
+    {
+        if (context.User.Identity?.IsAuthenticated == true)
+        {
+            var access = tenant.Current;
+            if (routing.NtmTenantCodes.Contains(access.TenantCode, StringComparer.Ordinal) && access.ActorId is { } actor &&
+                ((!access.IsInternal && context.User.IsInRole("TenantAdmin")) ||
+                (access.IsInternal && context.User.IsInRole("IKhetheloAdmin") &&
+                routing.CrossTenantNtm.TryGetValue(actor.ToString(), out var codes) && codes.Contains(access.TenantCode, StringComparer.Ordinal))))
+                context.Succeed(requirement);
+        }
+        return Task.CompletedTask;
+    }
+}
 public sealed class AdministratorManagementHandler(ITenantContext tenant, TenantRouting routing) : AuthorizationHandler<AdministratorManagementRequirement>
 {
     protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, AdministratorManagementRequirement requirement)
