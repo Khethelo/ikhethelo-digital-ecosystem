@@ -49,6 +49,7 @@ builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 
 builder.Logging.AddFilter("Microsoft.EntityFrameworkCore", LogLevel.None);
 builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddHealthChecks();
 builder.Services.AddDbContext<DigitalDbContext>((services, options) => options.UseNpgsql(
     services.GetRequiredService<IConfiguration>().GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Configure ConnectionStrings:DefaultConnection.")));
 builder.Services.AddSingleton(services => services.GetRequiredService<IConfiguration>().GetSection("Jwt").Get<JwtSettings>() ?? new());
@@ -191,6 +192,7 @@ if (app.Environment.IsDevelopment())
     app.MapGet("/swagger/contract.yaml", () => Results.File(Path.Combine(AppContext.BaseDirectory, "Contract", "ikhethelo-digital-api.openapi.yaml"), "application/yaml")).AllowAnonymous();
     app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/contract.yaml", "iKhethelo Digital API v1"));
 }
+app.MapHealthChecks("/healthz").AllowAnonymous();
 app.MapControllers();
 await app.RunAsync();
 public partial class Program;

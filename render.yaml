@@ -5,6 +5,7 @@ services:
     plan: free
     dockerContext: .
     dockerfilePath: ./IKhethelo.Digital.Api/Dockerfile
+    healthCheckPath: /healthz
     envVars:
       - key: ConnectionStrings__DefaultConnection
         sync: false

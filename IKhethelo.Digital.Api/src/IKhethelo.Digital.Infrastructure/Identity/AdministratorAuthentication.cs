@@ -18,7 +18,7 @@ public sealed class AdministratorAuthentication(DigitalDbContext db, IPasswordHa
     {
         Validation.Login(request);
         var normalized = Validation.NormalizeEmail(request.Email!);
-        var admin = await db.AdminUsers.Include(x => x.Tenant).SingleOrDefaultAsync(x => x.NormalizedEmail == normalized, ct);
+        var admin = await db.AdminUsers.Include(x => x.Tenant).SingleOrDefaultAsync(x => x.NormalizedEmail == normalized, ct); // It crashes on this line
         var verified = hasher.VerifyHashedPassword(admin ?? new AdminUser(), admin?.PasswordHash ?? timing.DummyHash, request.Password!);
         if (admin is null || verified == PasswordVerificationResult.Failed || !admin.IsActive ||
             (admin.Role == AdminRole.TenantAdmin && (admin.TenantId is null || admin.Tenant?.IsActive != true)) ||
