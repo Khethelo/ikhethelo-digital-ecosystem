@@ -49,4 +49,6 @@ The contract check reads the repository's actual OpenAPI and verifies DTO fields
 
 Production output is `dist/ntm-greenpulse-frontend/browser`. Hosting needs an SPA fallback to `index.html` and a same-origin reverse proxy for `/api` to the shared backend. Do not use the static test preview as a production API proxy. No publishing or production deployment is performed automatically.
 
+For Netlify, the repository-root `netlify.toml` sets the frontend base directory, Node 24, build command, publish directory, `/api/*` proxy to the Render API, and Angular fallback. Configure the site to use the repository root so Netlify reads that file; settings in the file apply to the frontend directory. Deploying the frontend does not run API migrations or bootstrap an administrator.
+
 Backend authority: `docs/NTM_MODULE.md`, `docs/NTM_SPREADSHEET_FIELD_MAPPING.md`, `docs/NTM_IMPLEMENTATION_REPORT.md`, `contracts/ikhethelo-digital-api.openapi.yaml` and `NtmContracts.cs`. See `docs/NTM_FRONTEND_IMPLEMENTATION_REPORT.md` for verification results.
