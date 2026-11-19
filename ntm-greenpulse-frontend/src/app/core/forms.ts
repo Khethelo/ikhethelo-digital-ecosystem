@@ -122,6 +122,8 @@ export function applyErrors(form: FormGroup, error: unknown) {
 }
 export const adminPassword = [
   Validators.required,
-  Validators.minLength(12),
+  (control: AbstractControl) => [...(control.value ?? "")].length >= 8 ? null : { passwordLength: true },
+  (control: AbstractControl) => /[0-9]/.test(control.value ?? "") ? null : { passwordDigit: true },
+  (control: AbstractControl) => /[^\p{L}\p{N}\p{White_Space}]/u.test(control.value ?? "") ? null : { passwordSpecial: true },
   maxText(128),
 ];

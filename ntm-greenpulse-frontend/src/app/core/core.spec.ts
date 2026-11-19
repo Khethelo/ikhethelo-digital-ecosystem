@@ -14,9 +14,15 @@ import { Router, provideRouter } from "@angular/router";
 import { Api } from "./api";
 import { Auth, safeReturn, sessionInterceptor } from "./auth";
 import { CONFIG, validateConfig } from "./config";
-import { calendarDate, numeric, registration, requiredText } from "./forms";
+import { adminPassword, calendarDate, numeric, registration, requiredText } from "./forms";
 
 describe("form and configuration safeguards", () => {
+  it("enforces the administrator password policy without trimming", () => {
+    for (const value of ["ab1!xyz", "abcdefgh!", "abcdefgh1", "abcdefgh1 "])
+      expect(new FormControl(value, adminPassword).invalid).toBe(true);
+    for (const value of ["abcdef1!", "密碼密碼ab1!", "pass word1!"])
+      expect(new FormControl(value, adminPassword).valid).toBe(true);
+  });
   it("accepts either registration number and rejects missing identifiers", () => {
     const fb = new FormBuilder();
     const form = fb.group(
@@ -212,6 +218,13 @@ describe("authenticated NTM API", () => {
     }
     expect(localStorage.length).toBe(0);
     expect(sessionStorage.getItem("ntm-greenpulse-session")).toContain("test-token");
+  });
+  it("authenticates the own-password endpoint", () => {
+    login();
+    api.changeOwnPassword("old-password", "newpass1!", "newpass1!").subscribe();
+    const req = http.expectOne("/api/v1/auth/change-password");
+    expect(req.request.headers.get("Authorization")).toBe("Bearer test-token");
+    req.flush(null);
   });
   it("restores a session after refresh without extending its expiry", () => {
     vi.useFakeTimers();

@@ -29,7 +29,7 @@ internal static class BootstrapConsole
             Console.Error.WriteLine("Cannot check database setup. Verify the protected connection string and PostgreSQL availability before bootstrap."); return 1;
         }
         Console.Write($"Initial TenantAdmin for {tenantCode}. Email: "); var email = Console.ReadLine();
-        Console.Write("Password (12–128 characters): "); var password = ReadPassword();
+        Console.Write("Password (8–128 characters, with a digit and special character): "); var password = ReadPassword();
         Console.Write("Confirm password: "); var confirmation = ReadPassword();
         if (password != confirmation) { Console.Error.WriteLine("Passwords do not match."); return 1; }
         try

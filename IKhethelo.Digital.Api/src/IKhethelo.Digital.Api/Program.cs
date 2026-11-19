@@ -73,6 +73,7 @@ builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 builder.Services.AddScoped<MembershipEmails>();
 builder.Services.AddScoped<IMemberAdministration, MemberAdministration>();
 builder.Services.AddScoped<IAdministratorAuthentication, AdministratorAuthentication>();
+builder.Services.AddScoped<IChangeOwnPassword, ChangeOwnPasswordService>();
 builder.Services.AddScoped<IAdminUserManagement, AdminUserManagement>();
 builder.Services.AddScoped<BootstrapAdministrator>();
 builder.Services.AddScoped<ExistingDatabaseAdoption>();

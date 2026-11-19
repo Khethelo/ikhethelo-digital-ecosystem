@@ -80,7 +80,7 @@ dotnet ef database update --project src/IKhethelo.Digital.Infrastructure --start
 dotnet run --project src/IKhethelo.Digital.Api --launch-profile IKhethelo.Digital.Api -- --bootstrap-admin --tenant ESHL
 ```
 
-Enter the administrator's email, then a password of 12–128 characters and its confirmation. Password input is not echoed. Bootstrap checks migration readiness before prompting, has no HTTP endpoint, accepts no password argument or redirected input, starts no web server and needs no JWT signing key. Database credentials are loaded from normal protected configuration. Creation and its audit record commit atomically; concurrent/repeated bootstrap refuses to create another account, including when an existing account is inactive. Bootstrap is not an account recovery mechanism. Run it only with trusted operator access to the configured database. Do not rerun the baseline SQL as a schema upgrade; existing EF-managed databases use the additive migration. Baseline-only installations use the verified adoption command above first.
+Enter the administrator's email, then a password of 8–128 characters with at least one ASCII digit and one special character (neither a Unicode letter, number nor whitespace), and its confirmation. Password input is not echoed. Bootstrap checks migration readiness before prompting, has no HTTP endpoint, accepts no password argument or redirected input, starts no web server and needs no JWT signing key. Database credentials are loaded from normal protected configuration. Creation and its audit record commit atomically; concurrent/repeated bootstrap refuses to create another account, including when an existing account is inactive. Bootstrap is not an account recovery mechanism. Run it only with trusted operator access to the configured database. Do not rerun the baseline SQL as a schema upgrade; existing EF-managed databases use the additive migration. Baseline-only installations use the verified adoption command above first.
 
 Start normally after setup:
 
@@ -104,6 +104,8 @@ TenantAdmin implicitly selects its assigned tenant at `/api/v1/admin-users`. An 
 | Reset password | `POST /api/v1/admin-users/{id}/reset-password` | `{"newPassword":"<strong unique password>"}` |
 
 Only TenantAdmin may be assigned here: tenant account management cannot grant the internal IKhetheloAdmin role or move ownership. Self-deactivation and deactivating the last active tenant administrator return 409. Email changes, status changes and password resets invalidate the target's existing tokens through a database credential version. Reactivation cannot revive revoked tokens. Password resets are administrator-driven, return no password/token, and are audited without secrets. They do not implement email recovery links or a forced-change-on-next-login flow. Deliver new credentials through your trusted operational channel; the API does not send them.
+
+An authenticated administrator changes their own password with `POST /api/v1/auth/change-password` using `currentPassword`, `newPassword` and `confirmPassword`. It verifies the current password, disallows reuse, revokes existing sessions and records an audit event. The caller must sign in again. Administrator reset is tenant-scoped and cannot target the caller's own account.
 
 Member operations use `/api/v1/admin/tenants/ESHL` (or `eshlahleni`). Existing list/search, profile updates and status changes remain available. New operations:
 

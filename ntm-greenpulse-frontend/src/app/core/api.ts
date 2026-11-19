@@ -162,4 +162,7 @@ export class Api {
       { params: this.adminParams() },
     );
   }
+  changeOwnPassword(currentPassword: string, newPassword: string, confirmPassword: string) {
+    return this.http.post<void>(`${this.config.apiBaseUrl}/auth/change-password`, { currentPassword, newPassword, confirmPassword });
+  }
 }

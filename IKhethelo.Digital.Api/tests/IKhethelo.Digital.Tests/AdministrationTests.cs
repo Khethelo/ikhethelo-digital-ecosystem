@@ -49,6 +49,30 @@ public sealed class AdministrationTests(ApiFixture fixture)
         return await scope.ServiceProvider.GetRequiredService<BootstrapAdministrator>().ExecuteAsync(code, email, password, CancellationToken.None);
     }
     [Fact]
+    public async Task OwnPasswordChangeChecksCurrentPasswordRevokesTokensAndAudits()
+    {
+        using var manager = await Auth(); var email = Email(); var oldPassword = Password(); var id = await Create(manager, email, oldPassword);
+        using var target = await Auth(email, oldPassword);
+        var next = "newpass1!";
+        Assert.Equal((HttpStatusCode)422, (await target.PostAsJsonAsync("/api/v1/auth/change-password", new { currentPassword = "wrong", newPassword = next, confirmPassword = next })).StatusCode);
+        Assert.Equal((HttpStatusCode)422, (await target.PostAsJsonAsync("/api/v1/auth/change-password", new { currentPassword = oldPassword, newPassword = next, confirmPassword = "mismatch" })).StatusCode);
+        Assert.Equal((HttpStatusCode)422, (await target.PostAsJsonAsync("/api/v1/auth/change-password", new { currentPassword = oldPassword, newPassword = oldPassword, confirmPassword = oldPassword })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await target.PostAsJsonAsync($"/api/v1/admin-users/{id}/reset-password", new { newPassword = next })).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await target.PostAsJsonAsync("/api/v1/auth/change-password", new { currentPassword = oldPassword, newPassword = next, confirmPassword = next })).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await target.GetAsync("/api/v1/admin-users")).StatusCode);
+        using var changed = await Auth(email, next);
+        await using var db = fixture.Db(); var audit = await db.AuditLogs.SingleAsync(x => x.EntityId == id && x.Action == "ChangeOwnPassword");
+        Assert.DoesNotContain(next, audit.MetadataJson ?? ""); Assert.DoesNotContain(oldPassword, audit.MetadataJson ?? "");
+    }
+    [Fact]
+    public async Task BootstrapAcceptsEightCharacterPassword()
+    {
+        var tenant = await BootstrapTenant(); var email = Email();
+        await Bootstrap(tenant.Code, email, "abcdef1!");
+        using var client = await Auth(email, "abcdef1!");
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/admin-users")).StatusCode);
+    }
+    [Fact]
     public async Task BootstrapCreatesHashedAuditedTenantAdminWhoCanLoginAndCannotRepeat()
     {
         var tenant = await BootstrapTenant(); var email = Email(); var password = Password();
@@ -128,6 +152,8 @@ public sealed class AdministrationTests(ApiFixture fixture)
         Assert.Equal(HttpStatusCode.OK, (await reactivated.GetAsync("/api/v1/admin-users")).StatusCode);
         await using var db = fixture.Db(); var other = await db.AdminUsers.SingleAsync(x => x.Email == "second@example.com");
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/v1/admin-users/{other.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync($"/api/v1/admin-users/{other.Id}/reset-password", new { newPassword = Password() })).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await fixture.Client.PostAsJsonAsync($"/api/v1/admin-users/{id}/reset-password", new { newPassword = Password() })).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/v1/admin-users?tenantCode=SECOND")).StatusCode);
         Assert.True(await db.AuditLogs.AnyAsync(x => x.EntityId == id && x.Action == "UpdateAdministrator"));
         Assert.Equal(2, await db.AuditLogs.CountAsync(x => x.EntityId == id && x.Action == "SetAdministratorStatus"));

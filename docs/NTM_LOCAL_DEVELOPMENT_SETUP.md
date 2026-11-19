@@ -24,6 +24,6 @@ $env:ASPNETCORE_ENVIRONMENT = 'Development'
 dotnet .\bin\Debug\net10.0\IKhethelo.Digital.Api.dll --bootstrap-admin --tenant NTM
 ```
 
-Enter an email, a unique 12–128 character password and confirmation. Password input is hidden. Bootstrap hashes the password and writes the required audit record atomically; it refuses repeat setup. This command creates no web listener and performs no migrations. After success, sign in at `http://localhost:4300` while IIS Express is running.
+Enter an email, a unique 8–128 character password containing an ASCII digit and a special character (neither a Unicode letter, number nor whitespace), and confirmation. Password input is hidden. Bootstrap hashes the password and writes the required audit record atomically; it refuses repeat setup. This command creates no web listener and performs no migrations. After success, sign in at `http://localhost:4300` while IIS Express is running.
 
 No administrator has been created by the automated setup. Authenticated NTM frontend/database access remains unverified until this interactive step succeeds.

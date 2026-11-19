@@ -16,7 +16,7 @@ public sealed class SubmissionController(ISubmitMembershipApplication submit) : 
 
 [ApiController]
 [Route("api/v1/auth")]
-public sealed class AuthenticationController(IAdministratorAuthentication authentication) : ControllerBase
+public sealed class AuthenticationController(IAdministratorAuthentication authentication, IChangeOwnPassword changePassword) : ControllerBase
 {
     [HttpPost("login"), AllowAnonymous, EnableRateLimiting("Login")]
     public async Task<IActionResult> Login(LoginRequest request, CancellationToken ct)
@@ -24,6 +24,15 @@ public sealed class AuthenticationController(IAdministratorAuthentication authen
         Response.Headers.CacheControl = "no-store";
         var token = await authentication.ExecuteAsync(request, ct);
         return token is null ? StatusCode(401, Problems.Create(HttpContext, 401, "Invalid credentials.")) : Ok(token);
+    }
+    [HttpPost("change-password"), Authorize, EnableRateLimiting("Login")]
+    public async Task<IActionResult> ChangePassword(ChangeOwnPassword request, CancellationToken ct)
+    {
+        if (!Guid.TryParse(User.FindFirst("sub")?.Value, out var actor) ||
+            !int.TryParse(User.FindFirst("security_version")?.Value, out var version)) return Unauthorized();
+        Response.Headers.CacheControl = "no-store";
+        await changePassword.ExecuteAsync(actor, version, request, ct);
+        return NoContent();
     }
 }
 

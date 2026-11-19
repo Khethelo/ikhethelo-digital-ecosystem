@@ -84,11 +84,37 @@ public sealed class AdminUserManagement(DigitalDbContext db, ITenantContext cont
     }
     public async Task ResetPasswordAsync(Guid id, AdminPasswordReset request, CancellationToken ct)
     {
+        if (id == Access.ActorId) throw new RequestFailure(403, "Use change password for your own account.");
         AdministratorValidation.Password(request.NewPassword);
         await using var transaction = await db.Database.BeginTransactionAsync(ct); await LockTenantAsync(ct);
-        var admin = await FindAsync(id, ct);
+        var admin = (await db.AdminUsers.FromSqlInterpolated($"SELECT * FROM admin_users WHERE id = {id} AND tenant_id = {Access.TenantId} AND role = 'TenantAdmin' FOR UPDATE").ToListAsync(ct)).SingleOrDefault() ?? throw RequestFailure.NotFound();
         admin.PasswordHash = hasher.HashPassword(admin, request.NewPassword!); admin.SecurityVersion++; admin.UpdatedAtUtc = clock.GetUtcNow();
         audit.Add("ResetAdministratorPassword", "AdminUser", id);
+        await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct);
+    }
+}
+
+public sealed class ChangeOwnPasswordService(DigitalDbContext db, IPasswordHasher<AdminUser> hasher, TimeProvider clock) : IChangeOwnPassword
+{
+    public async Task ExecuteAsync(Guid actorId, int securityVersion, ChangeOwnPassword request, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(request.CurrentPassword) || request.CurrentPassword.Length > 1024)
+            throw new RequestFailure(422, "Enter your current password.", new() { ["currentPassword"] = ["Enter your current password."] });
+        AdministratorValidation.Password(request.NewPassword);
+        if (request.NewPassword != request.ConfirmPassword)
+            throw new RequestFailure(422, "New password and confirmation do not match.", new() { ["confirmPassword"] = ["Passwords do not match."] });
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        var admin = (await db.AdminUsers.FromSqlInterpolated($"SELECT * FROM admin_users WHERE id = {actorId} FOR UPDATE").ToListAsync(ct)).SingleOrDefault();
+        if (admin is null || !admin.IsActive || admin.SecurityVersion != securityVersion)
+            throw new RequestFailure(401, "Authentication is required.");
+        if (hasher.VerifyHashedPassword(admin, admin.PasswordHash, request.CurrentPassword) == PasswordVerificationResult.Failed)
+            throw new RequestFailure(422, "Current password is incorrect.", new() { ["currentPassword"] = ["Current password is incorrect."] });
+        if (hasher.VerifyHashedPassword(admin, admin.PasswordHash, request.NewPassword!) != PasswordVerificationResult.Failed)
+            throw new RequestFailure(422, "Choose a password different from your current password.", new() { ["password"] = ["Choose a password different from your current password."] });
+        admin.PasswordHash = hasher.HashPassword(admin, request.NewPassword!);
+        admin.SecurityVersion++; admin.UpdatedAtUtc = clock.GetUtcNow();
+        db.AuditLogs.Add(new AuditLog { Id = Guid.NewGuid(), TenantId = admin.TenantId, ActorAdminUserId = admin.Id,
+            Action = "ChangeOwnPassword", EntityType = "AdminUser", EntityId = admin.Id, CreatedAtUtc = clock.GetUtcNow() });
         await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct);
     }
 }

@@ -96,6 +96,23 @@ paths:
         '422': {$ref: '#/components/responses/ValidationFailed'}
         '429': {$ref: '#/components/responses/RateLimited'}
         '500': {$ref: '#/components/responses/ServerError'}
+  /api/v1/auth/change-password:
+    post:
+      operationId: changeOwnAdministratorPassword
+      tags: [Authentication]
+      summary: Change the authenticated administrator's password and invalidate existing sessions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ChangeOwnPassword'}
+      responses:
+        '204': {description: Password changed; authenticate again}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '500': {$ref: '#/components/responses/ServerError'}
   /api/v1/admin/tenants/{tenantCode}/membership-applications:
     parameters:
       - $ref: '#/components/parameters/TenantCode'
@@ -1525,7 +1542,7 @@ components:
       required: [email, password, role]
       properties:
         email: {$ref: '#/components/schemas/Email'}
-        password: {type: string, minLength: 12, maxLength: 128, writeOnly: true}
+        password: {type: string, minLength: 8, maxLength: 128, writeOnly: true, description: 'Must contain an ASCII digit and a character that is not a Unicode letter, number or whitespace.'}
         role: {type: string, enum: [TenantAdmin]}
     AdminUpdate:
       type: object
@@ -1545,7 +1562,15 @@ components:
       additionalProperties: false
       required: [newPassword]
       properties:
-        newPassword: {type: string, minLength: 12, maxLength: 128, writeOnly: true}
+        newPassword: {type: string, minLength: 8, maxLength: 128, writeOnly: true, description: 'Must contain an ASCII digit and a character that is not a Unicode letter, number or whitespace.'}
+    ChangeOwnPassword:
+      type: object
+      additionalProperties: false
+      required: [currentPassword, newPassword, confirmPassword]
+      properties:
+        currentPassword: {type: string, maxLength: 1024, writeOnly: true}
+        newPassword: {type: string, minLength: 8, maxLength: 128, writeOnly: true, description: 'Must contain an ASCII digit and a character that is not a Unicode letter, number or whitespace.'}
+        confirmPassword: {type: string, minLength: 8, maxLength: 128, writeOnly: true}
     Administrator:
       type: object
       additionalProperties: false

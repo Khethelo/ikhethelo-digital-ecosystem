@@ -6,6 +6,8 @@ public sealed record AdminCreate(string? Email, string? Password, string? Role);
 public sealed record AdminUpdate(string? Email, string? Role);
 public sealed record AdminStatusUpdate(bool? IsActive);
 public sealed record AdminPasswordReset(string? NewPassword);
+public sealed record ChangeOwnPassword(string? CurrentPassword, string? NewPassword, string? ConfirmPassword);
+public interface IChangeOwnPassword { Task ExecuteAsync(Guid actorId, int securityVersion, ChangeOwnPassword request, CancellationToken ct); }
 public sealed record AdminResponse(Guid Id, string Email, string Role, bool IsActive,
     DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc, DateTimeOffset? LastLoginAtUtc);
 public sealed record AdminListQuery(int Page = 1, int PageSize = 20, string? Search = null, bool? IsActive = null);
@@ -43,8 +45,13 @@ public static class AdministratorValidation
     public static void Email(string? email) => Validation.Login(new(email, "validation-only"));
     public static void Password(string? password)
     {
-        if (password is null || password.EnumerateRunes().Count() is < 12 or > 128 || string.IsNullOrWhiteSpace(password))
-            throw new RequestFailure(422, "Use a password of 12 to 128 characters.", new() { ["password"] = ["Use a password of 12 to 128 characters."] });
+        const string message = "Use 8 to 128 characters, including an ASCII digit and a special character (not a letter, number, or whitespace).";
+        if (password is null || password.EnumerateRunes().Count() is < 8 or > 128 ||
+            !password.Any(c => c is >= '0' and <= '9') ||
+            !password.EnumerateRunes().Any(r => !System.Text.Rune.IsLetter(r) &&
+                System.Text.Rune.GetUnicodeCategory(r) is not (System.Globalization.UnicodeCategory.DecimalDigitNumber or System.Globalization.UnicodeCategory.LetterNumber or System.Globalization.UnicodeCategory.OtherNumber) &&
+                !System.Text.Rune.IsWhiteSpace(r)))
+            throw new RequestFailure(422, message, new() { ["password"] = [message] });
     }
     public static void Role(string? role)
     {

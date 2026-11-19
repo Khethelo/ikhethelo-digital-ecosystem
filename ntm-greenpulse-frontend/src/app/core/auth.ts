@@ -96,13 +96,13 @@ export class Auth {
     clearTimeout(this.timer);
     try { sessionStorage.removeItem(sessionKey); } catch { /* Storage is unavailable. */ }
   }
-  logout(expired = false) {
+  logout(expired = false, notice?: string) {
     const returnUrl = safeReturn(this.router.url);
     this.clear();
     this.message.set(
-      expired
+      notice ?? (expired
         ? "Your session has ended. Sign in again to continue."
-        : "You have signed out.",
+        : "You have signed out."),
     );
     void this.router.navigate(["/login"], {
       queryParams: expired ? { returnUrl } : {},
@@ -119,6 +119,7 @@ export const sessionInterceptor: HttpInterceptorFn = (request, next) => {
   const auth = inject(Auth);
   const base = inject(CONFIG).apiBaseUrl;
   const protectedApi =
+    request.url === `${base}/auth/change-password` ||
     request.url.startsWith(`${base}/admin/`) ||
     request.url === `${base}/admin-users` ||
     request.url.startsWith(`${base}/admin-users/`);

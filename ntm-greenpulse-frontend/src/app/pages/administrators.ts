@@ -26,6 +26,7 @@ import { Field, IssueBox, Pager } from "../shared/ui";
       <button class="btn btn-sm btn-primary" (click)="openCreate()">
         + Add administrator
       </button>
+      <button class="btn btn-sm btn-outline-secondary" (click)="changeOwn()">Change my password</button>
     </div>
     <ntm-issue [issue]="issue()" />
     @if (success()) {
@@ -40,7 +41,7 @@ import { Field, IssueBox, Pager } from "../shared/ui";
                 ? "Add administrator"
                 : mode() === "edit"
                   ? "Update administrator"
-                  : "Reset password"
+                  : mode() === "own" ? "Change my password" : "Reset password"
             }}
           </h2>
           <button class="btn btn-sm btn-outline-secondary" (click)="close()">
@@ -48,7 +49,7 @@ import { Field, IssueBox, Pager } from "../shared/ui";
           </button>
         </div>
         <form [formGroup]="form" (ngSubmit)="save()" novalidate>
-          @if (mode() !== "password") {
+          @if (mode() === "create" || mode() === "edit") {
             <ntm-field
               [form]="form"
               [field]="{
@@ -60,19 +61,19 @@ import { Field, IssueBox, Pager } from "../shared/ui";
               }"
             />
           }
+          @if (mode() === "own") {
+            <label class="form-label" for="currentPassword">Current password</label>
+            <input id="currentPassword" class="form-control form-control-sm" [type]="showPassword() ? 'text' : 'password'" formControlName="currentPassword" autocomplete="current-password" />
+          }
           @if (mode() !== "edit") {
-            <ntm-field
-              [form]="form"
-              [field]="{
-                key: 'password',
-                label:
-                  mode() === 'password' ? 'New password' : 'Initial password',
-                type: 'password',
-                max: 128,
-                required: true,
-                hint: '12–128 characters. Share credentials through your trusted channel.',
-              }"
-            />
+            <label class="form-label" for="password">{{ mode() === 'create' ? 'Initial password' : 'New password' }}</label>
+            <input id="password" class="form-control form-control-sm" [type]="showPassword() ? 'text' : 'password'" formControlName="password" autocomplete="new-password" aria-describedby="password-policy" />
+            <small id="password-policy">8–128 characters, at least one digit (0–9) and one special character. Spaces and letters are not special characters.</small>
+            @if (form.controls.password.dirty && form.controls.password.invalid) { <p class="field-error" role="status">Check the password requirements above.</p> }
+            <label class="form-label" for="confirmPassword">Confirm password</label>
+            <input id="confirmPassword" class="form-control form-control-sm" [type]="showPassword() ? 'text' : 'password'" formControlName="confirmPassword" autocomplete="new-password" [attr.aria-invalid]="confirmationMismatch()" aria-describedby="confirm-password-error" />
+            @if (confirmationMismatch()) { <p id="confirm-password-error" class="field-error" role="alert">Passwords do not match.</p> }
+            <button type="button" class="btn btn-sm btn-link" (click)="showPassword.set(!showPassword())">{{ showPassword() ? 'Hide passwords' : 'Show passwords' }}</button>
           }
           <p class="text-secondary small">
             {{
@@ -81,7 +82,7 @@ import { Field, IssueBox, Pager } from "../shared/ui";
                 : "Only the TenantAdmin role can be assigned here."
             }}
           </p>
-          <button class="btn btn-sm btn-primary" [disabled]="saving()">
+          <button class="btn btn-sm btn-primary" [disabled]="saving() || form.invalid || confirmationMismatch()">
             {{ saving() ? "Saving…" : "Save administrator" }}
           </button>
         </form>
@@ -163,6 +164,7 @@ import { Field, IssueBox, Pager } from "../shared/ui";
                         Edit</button
                       ><button
                         class="btn btn-sm btn-outline-secondary"
+                        [disabled]="admin.id === auth.actorId()"
                         (click)="password(admin)"
                       >
                         Reset password</button
@@ -209,8 +211,12 @@ export class Administrators {
   readonly form = this.fb.nonNullable.group({
     email: ["", [Validators.required, Validators.email, maxText(320)]],
     password: ["", adminPassword],
+    confirmPassword: [""],
+    currentPassword: [""],
   });
-  readonly mode = signal<"create" | "edit" | "password" | null>(null);
+  readonly mode = signal<"create" | "edit" | "password" | "own" | null>(null);
+  readonly showPassword = signal(false);
+  confirmationMismatch() { return this.mode() !== "edit" && this.form.controls.password.value !== this.form.controls.confirmPassword.value; }
   readonly selected = signal<Administrator | null>(null);
   readonly saving = signal(false);
   readonly issue = signal<Issue | null>(null);
@@ -222,7 +228,7 @@ export class Administrators {
     return !!this.mode() && this.form.dirty;
   }
   private begin(
-    mode: "create" | "edit" | "password",
+    mode: "create" | "edit" | "password" | "own",
     admin: Administrator | null,
   ) {
     if (this.saving()) return false;
@@ -233,18 +239,23 @@ export class Administrators {
       return false;
     this.mode.set(mode);
     this.selected.set(admin);
-    this.form.reset({ email: admin?.email ?? "", password: "" });
+    this.form.reset({ email: admin?.email ?? "", password: "", confirmPassword: "", currentPassword: "" });
+    this.showPassword.set(false);
     this.form.controls.email.setValidators(
-      mode === "password"
+      mode === "password" || mode === "own"
         ? []
         : [Validators.required, Validators.email, maxText(320)],
     );
     this.form.controls.password.setValidators(
       mode === "edit" ? [] : adminPassword,
     );
+    this.form.controls.confirmPassword.setValidators(mode === "edit" ? [] : [Validators.required]);
+    this.form.controls.currentPassword.setValidators(mode === "own" ? [Validators.required] : []);
     this.form.updateValueAndValidity();
     this.form.controls.email.updateValueAndValidity();
     this.form.controls.password.updateValueAndValidity();
+    this.form.controls.confirmPassword.updateValueAndValidity();
+    this.form.controls.currentPassword.updateValueAndValidity();
     this.issue.set(null);
     this.success.set("");
     return true;
@@ -258,6 +269,7 @@ export class Administrators {
   password(admin: Administrator) {
     this.begin("password", admin);
   }
+  changeOwn() { this.begin("own", null); }
   close() {
     if (this.saving()) return;
     if (
@@ -279,7 +291,7 @@ export class Administrators {
   save() {
     if (this.saving()) return;
     this.form.markAllAsTouched();
-    if (this.form.invalid) return;
+    if (this.form.invalid || this.confirmationMismatch()) return;
     this.issue.set(null);
     this.saving.set(true);
     const value = this.form.getRawValue();
@@ -290,6 +302,7 @@ export class Administrators {
         ? this.api.createAdministrator(value.email, value.password)
         : mode === "edit"
           ? this.api.updateAdministrator(selected!.id, value.email)
+          : mode === "own" ? this.api.changeOwnPassword(value.currentPassword, value.password, value.confirmPassword)
           : this.api.resetPassword(selected!.id, value.password);
     request
       .pipe(
@@ -300,8 +313,8 @@ export class Administrators {
         next: () => {
           this.form.reset();
           this.mode.set(null);
-          if (selected?.id === this.auth.actorId()) {
-            this.auth.logout();
+          if (mode === "own" || selected?.id === this.auth.actorId()) {
+            this.auth.logout(false, mode === "own" ? "Your password was changed. Sign in again." : undefined);
             return;
           }
           this.success.set(
@@ -320,6 +333,8 @@ export class Administrators {
           );
           applyErrors(this.form, e);
           this.form.controls.password.reset();
+          this.form.controls.confirmPassword.reset();
+          this.form.controls.currentPassword.reset();
         },
       });
   }
