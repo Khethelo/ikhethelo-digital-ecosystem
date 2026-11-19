@@ -50,7 +50,7 @@ public sealed class TenantScopeMiddleware(RequestDelegate next)
         {
             if (!Guid.TryParse(context.User.FindFirstValue("sub"), out var actorId)) throw new RequestFailure(401, "Authentication is required.");
             actor = actorId; isInternal = context.User.IsInRole(nameof(AdminRole.IKhetheloAdmin));
-            if (!isInternal && (!context.User.IsInRole(nameof(AdminRole.TenantAdmin)) ||
+            if (!isInternal && (!(context.User.IsInRole(nameof(AdminRole.TenantAdmin)) || context.User.IsInRole(nameof(AdminRole.TenantStaff))) ||
                 !Guid.TryParse(context.User.FindFirstValue("tenant_id"), out var claimTenant) || claimTenant != tenant.Id))
                 throw new RequestFailure(403, "Access is forbidden.");
         }
@@ -70,7 +70,7 @@ public sealed class NtmAccessHandler(ITenantContext tenant, TenantRouting routin
         {
             var access = tenant.Current;
             if (routing.NtmTenantCodes.Contains(access.TenantCode, StringComparer.Ordinal) && access.ActorId is { } actor &&
-                ((!access.IsInternal && context.User.IsInRole("TenantAdmin")) ||
+                ((!access.IsInternal && (context.User.IsInRole("TenantAdmin") || context.User.IsInRole("TenantStaff"))) ||
                 (access.IsInternal && context.User.IsInRole("IKhetheloAdmin") &&
                 routing.CrossTenantNtm.TryGetValue(actor.ToString(), out var codes) && codes.Contains(access.TenantCode, StringComparer.Ordinal))))
                 context.Succeed(requirement);

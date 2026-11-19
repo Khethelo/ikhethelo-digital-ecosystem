@@ -20,11 +20,11 @@ import { Field, IssueBox, Pager } from "../shared/ui";
   template: `<div class="page-heading">
       <div>
         <span class="eyebrow">WORKSPACE ACCESS</span>
-        <h1>Administrators</h1>
-        <p>Manage authorised tenant administrator accounts.</p>
+        <h1>User Management</h1>
+        <p>Manage authorised organisation accounts.</p>
       </div>
       <button class="btn btn-sm btn-primary" (click)="openCreate()">
-        + Add administrator
+        + Add user
       </button>
       <button class="btn btn-sm btn-outline-secondary" (click)="changeOwn()">Change my password</button>
     </div>
@@ -60,6 +60,11 @@ import { Field, IssueBox, Pager } from "../shared/ui";
                 required: true,
               }"
             />
+            <label class="form-label" for="userRole">Role</label>
+            <select id="userRole" class="form-select form-select-sm" formControlName="role">
+              <option value="TenantStaff">Admin</option>
+              <option value="TenantAdmin">Organisation Administrator</option>
+            </select>
           }
           @if (mode() === "own") {
             <label class="form-label" for="currentPassword">Current password</label>
@@ -79,7 +84,7 @@ import { Field, IssueBox, Pager } from "../shared/ui";
             {{
               mode() === "edit"
                 ? "Email changes invalidate existing sign-in sessions."
-                : "Only the TenantAdmin role can be assigned here."
+                : "Organisation Administrators can manage users. Admins manage veterans and businesses."
             }}
           </p>
           <button class="btn btn-sm btn-primary" [disabled]="saving() || form.invalid || confirmationMismatch()">
@@ -139,7 +144,7 @@ import { Field, IssueBox, Pager } from "../shared/ui";
                       <span class="badge badge-neutral ms-2">You</span>
                     }
                   </td>
-                  <td>{{ admin.role }}</td>
+                  <td>{{ admin.role === 'TenantAdmin' ? 'Organisation Administrator' : admin.role === 'TenantStaff' ? 'Admin' : 'Platform Administrator' }}</td>
                   <td>
                     <span
                       class="badge"
@@ -213,6 +218,7 @@ export class Administrators {
     password: ["", adminPassword],
     confirmPassword: [""],
     currentPassword: [""],
+    role: ["TenantStaff", Validators.required],
   });
   readonly mode = signal<"create" | "edit" | "password" | "own" | null>(null);
   readonly showPassword = signal(false);
@@ -239,7 +245,7 @@ export class Administrators {
       return false;
     this.mode.set(mode);
     this.selected.set(admin);
-    this.form.reset({ email: admin?.email ?? "", password: "", confirmPassword: "", currentPassword: "" });
+    this.form.reset({ email: admin?.email ?? "", password: "", confirmPassword: "", currentPassword: "", role: admin?.role ?? "TenantStaff" });
     this.showPassword.set(false);
     this.form.controls.email.setValidators(
       mode === "password" || mode === "own"
@@ -297,11 +303,13 @@ export class Administrators {
     const value = this.form.getRawValue();
     const mode = this.mode();
     const selected = this.selected();
+    if ((mode === "create" || mode === "edit") && value.role === "TenantAdmin" && selected?.role !== "TenantAdmin" &&
+        !confirm("Grant Organisation Administrator access? This user can manage other accounts.")) { this.saving.set(false); return; }
     const request: Observable<Administrator | void> =
       mode === "create"
-        ? this.api.createAdministrator(value.email, value.password)
+        ? this.api.createAdministrator(value.email, value.password, value.role)
         : mode === "edit"
-          ? this.api.updateAdministrator(selected!.id, value.email)
+          ? this.api.updateAdministrator(selected!.id, value.email, value.role)
           : mode === "own" ? this.api.changeOwnPassword(value.currentPassword, value.password, value.confirmPassword)
           : this.api.resetPassword(selected!.id, value.password);
     request

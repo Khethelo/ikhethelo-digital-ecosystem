@@ -49,6 +49,45 @@ public sealed class AdministrationTests(ApiFixture fixture)
         return await scope.ServiceProvider.GetRequiredService<BootstrapAdministrator>().ExecuteAsync(code, email, password, CancellationToken.None);
     }
     [Fact]
+    public async Task StaffCanUseNtmButCannotManageUsersAndPromotionRevokesSessions()
+    {
+        using var manager = await Auth(); var email = Email(); var password = Password();
+        var created = await manager.PostAsJsonAsync("/api/v1/admin-users", new { email, password });
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var payload = await Json(created); Assert.Equal("TenantStaff", payload.GetProperty("role").GetString());
+        var id = payload.GetProperty("id").GetGuid();
+        using var staff = await Auth(email, password);
+        Assert.Equal(HttpStatusCode.OK, (await staff.GetAsync("/api/v1/admin/tenants/ESHL/ntm/dashboard")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await staff.GetAsync("/api/v1/admin-users")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await staff.PostAsJsonAsync("/api/v1/admin-users", new { email = Email(), password = Password(), role = "TenantStaff" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await staff.PostAsJsonAsync($"/api/v1/admin-users/{fixture.TenantAdminId}/reset-password", new { newPassword = Password() })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await staff.PutAsJsonAsync($"/api/v1/admin-users/{id}", new { email, role = "TenantAdmin" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await staff.GetAsync("/api/v1/admin/tenants/SECOND/ntm/dashboard")).StatusCode);
+        const string changedPassword = "staff-new1!";
+        Assert.Equal(HttpStatusCode.NoContent, (await staff.PostAsJsonAsync("/api/v1/auth/change-password", new { currentPassword = password, newPassword = changedPassword, confirmPassword = changedPassword })).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await staff.GetAsync("/api/v1/admin/tenants/ESHL/ntm/dashboard")).StatusCode);
+        using var changedStaff = await Auth(email, changedPassword);
+        Assert.Equal(HttpStatusCode.OK, (await changedStaff.GetAsync("/api/v1/admin/tenants/ESHL/ntm/dashboard")).StatusCode);
+        Assert.Equal((HttpStatusCode)422, (await manager.PutAsJsonAsync($"/api/v1/admin-users/{id}", new { email, role = "IKhetheloAdmin" })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await manager.PutAsJsonAsync($"/api/v1/admin-users/{id}", new { email, role = "TenantAdmin" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await changedStaff.GetAsync("/api/v1/admin/tenants/ESHL/ntm/dashboard")).StatusCode);
+        using var promoted = await Auth(email, changedPassword);
+        Assert.Equal(HttpStatusCode.OK, (await promoted.GetAsync("/api/v1/admin-users")).StatusCode);
+    }
+    [Fact]
+    public async Task LastActiveTenantAdministratorCannotBeDemotedWhenStaffExist()
+    {
+        var tenant = await BootstrapTenant(); var email = Email(); var id = await Bootstrap(tenant.Code, email, Password());
+        using var scope = fixture.Factory.Services.CreateScope();
+        scope.ServiceProvider.GetRequiredService<ResolvedTenantContext>().Set(new(tenant.Id, tenant.Code, id, false, Guid.NewGuid().ToString()));
+        var users = scope.ServiceProvider.GetRequiredService<IAdminUserManagement>();
+        await users.CreateAsync(new(Email(), Password(), "TenantStaff"), CancellationToken.None);
+        var demote = await Assert.ThrowsAsync<RequestFailure>(() => users.UpdateAsync(id, new(email, "TenantStaff"), CancellationToken.None));
+        Assert.Equal(409, demote.Status);
+        var deactivate = await Assert.ThrowsAsync<RequestFailure>(() => users.StatusAsync(id, new(false), CancellationToken.None));
+        Assert.Equal(409, deactivate.Status);
+    }
+    [Fact]
     public async Task OwnPasswordChangeChecksCurrentPasswordRevokesTokensAndAudits()
     {
         using var manager = await Auth(); var email = Email(); var oldPassword = Password(); var id = await Create(manager, email, oldPassword);

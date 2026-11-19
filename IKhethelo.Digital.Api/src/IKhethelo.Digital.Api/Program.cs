@@ -106,7 +106,7 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
                 principal.FindAll("security_version").Count() > 1 ||
                 !int.TryParse(principal.FindFirstValue("security_version") ?? "0", out var securityVersion) || securityVersion != admin.SecurityVersion ||
                 !Enum.IsDefined(admin.Role) ||
-                (admin.Role == AdminRole.TenantAdmin && (admin.TenantId is null || admin.Tenant?.IsActive != true || principal.FindAll("tenant_id").Count() != 1 ||
+                (admin.Role is (AdminRole.TenantAdmin or AdminRole.TenantStaff) && (admin.TenantId is null || admin.Tenant?.IsActive != true || principal.FindAll("tenant_id").Count() != 1 ||
                     !Guid.TryParse(principal.FindFirstValue("tenant_id"), out var tenantId) || tenantId != admin.TenantId)) ||
                 (admin.Role == AdminRole.IKhetheloAdmin && (admin.TenantId is not null || principal.HasClaim(x => x.Type == "tenant_id")))) context.Fail("Inactive or invalid identity.");
         },

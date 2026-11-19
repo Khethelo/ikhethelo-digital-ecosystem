@@ -42,7 +42,7 @@ public sealed class DatabaseAdoptionTests(ApiFixture fixture)
         // Repeating adoption verifies the schema again and does not duplicate history.
         await new ExistingDatabaseAdoption(db).ExecuteAsync(CancellationToken.None);
         await db.Database.MigrateAsync();
-        Assert.Equal(4, (await db.Database.GetAppliedMigrationsAsync()).Count());
+        Assert.Equal(5, (await db.Database.GetAppliedMigrationsAsync()).Count());
         var saved = await db.AdminUsers.SingleAsync(x => x.Id == admin); Assert.Equal("test-hash-to-preserve", saved.PasswordHash); Assert.Equal(0, saved.SecurityVersion);
         var savedMember = await db.Members.SingleAsync(x => x.Id == member); Assert.Equal("ESC-00420", savedMember.MemberNumber); Assert.Null(savedMember.CategoryId);
         Assert.False((await db.Tenants.SingleAsync(x => x.Id == fixture.Eshl)).IsActive);
@@ -57,7 +57,7 @@ public sealed class DatabaseAdoptionTests(ApiFixture fixture)
         await db.Database.ExecuteSqlRawAsync(await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "baseline.sql")));
         var result = await new ExistingDatabaseAdoption(db).ExecuteAsync(CancellationToken.None);
         Assert.Contains("both migrations", result);
-        Assert.Equal(new[] { ExistingDatabaseAdoption.NtmMigration, ExistingDatabaseAdoption.NtmWorkbookMigration }, await db.Database.GetPendingMigrationsAsync());
+        Assert.Equal(new[] { ExistingDatabaseAdoption.NtmMigration, ExistingDatabaseAdoption.NtmWorkbookMigration, ExistingDatabaseAdoption.TenantStaffMigration }, await db.Database.GetPendingMigrationsAsync());
         await db.Database.MigrateAsync();
         var password = "Random-" + Guid.NewGuid().ToString("N");
         var id = await new BootstrapAdministrator(db, new PasswordHasher<AdminUser>(), TimeProvider.System)
@@ -94,7 +94,7 @@ public sealed class DatabaseAdoptionTests(ApiFixture fixture)
         Assert.NotEqual(Guid.Empty, tenantId);
         await db.Database.ExecuteSqlRawAsync("DROP TABLE \"__EFMigrationsHistory\"");
         var result = await new ExistingDatabaseAdoption(db).ExecuteAsync(CancellationToken.None);
-        Assert.Contains("all four", result); Assert.Empty(await db.Database.GetPendingMigrationsAsync());
+        Assert.Contains("all five", result); Assert.Empty(await db.Database.GetPendingMigrationsAsync());
         Assert.Equal(tenantId, await db.Tenants.Where(x => x.Code == "NTM").Select(x => x.Id).SingleAsync());
         await AssertNoReferenceSchema(db);
     }

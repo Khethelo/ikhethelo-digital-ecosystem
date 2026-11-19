@@ -41,8 +41,8 @@ public sealed class DigitalDbContext(DbContextOptions<DigitalDbContext> options)
         admin.HasOne(x => x.Tenant).WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_admin_users_tenant");
         admin.HasAlternateKey(x => x.NormalizedEmail).HasName("uq_admin_users_normalized_email");
         admin.HasIndex(x => x.TenantId).HasDatabaseName("ix_admin_users_tenant_id");
-        Check(admin, "admin_users", "ck_admin_users_role", "role IN ('TenantAdmin', 'IKhetheloAdmin')");
-        Check(admin, "admin_users", "ck_admin_users_tenant_scope", "(role = 'TenantAdmin' AND tenant_id IS NOT NULL) OR (role = 'IKhetheloAdmin' AND tenant_id IS NULL)");
+        Check(admin, "admin_users", "ck_admin_users_role", "role IN ('TenantAdmin', 'TenantStaff', 'IKhetheloAdmin')");
+        Check(admin, "admin_users", "ck_admin_users_tenant_scope", "(role IN ('TenantAdmin', 'TenantStaff') AND tenant_id IS NOT NULL) OR (role = 'IKhetheloAdmin' AND tenant_id IS NULL)");
 
         var application = Table<MembershipApplication>(model, "membership_applications");
         Person(application); Timestamp(application, "SubmittedAtUtc", "submitted_at_utc"); Timestamp(application, "UpdatedAtUtc", "updated_at_utc");

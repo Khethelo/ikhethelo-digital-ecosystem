@@ -193,7 +193,7 @@ describe("authenticated NTM API", () => {
       .subscribe();
     const req = http.expectOne((r) => r.url.endsWith("/admin-users"));
     expect(req.request.params.get("tenantCode")).toBe("NTM");
-    expect(req.request.body.role).toBe("TenantAdmin");
+    expect(req.request.body.role).toBe("TenantStaff");
     expect(req.request.body.tenantId).toBeUndefined();
     req.flush({});
     api.resetPassword("a1", "new-test-password").subscribe();

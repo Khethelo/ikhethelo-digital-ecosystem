@@ -74,7 +74,7 @@ public sealed class ApiFixture : IAsyncLifetime
         {
             await ExecuteAsync(BaselineConnection, db.GetService<Microsoft.EntityFrameworkCore.Migrations.IHistoryRepository>().GetCreateIfNotExistsScript());
             await ExecuteAsync(BaselineConnection, db.GetService<Microsoft.EntityFrameworkCore.Migrations.IMigrator>()
-                .GenerateScript(ExistingDatabaseAdoption.AdministrationMigration, ExistingDatabaseAdoption.NtmWorkbookMigration));
+                .GenerateScript(ExistingDatabaseAdoption.AdministrationMigration, ExistingDatabaseAdoption.TenantStaffMigration));
         }
         await using (var db = Db())
         {

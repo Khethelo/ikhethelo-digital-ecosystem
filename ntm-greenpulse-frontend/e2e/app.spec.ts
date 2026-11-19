@@ -5,7 +5,7 @@ const v1 = "11111111-1111-4111-8111-111111111111",
   b1 = "33333333-3333-4333-8333-333333333333",
   a1 = "44444444-4444-4444-8444-444444444444";
 const time = "2026-11-13T08:00:00Z";
-async function setup(page: Page) {
+async function setup(page: Page, role = "TenantAdmin") {
   const veterans = Array.from({ length: 24 }, (_, i) => ({
     id: i === 0 ? v1 : i === 1 ? v2 : `veteran-${i + 1}`,
     fullName:
@@ -78,7 +78,7 @@ async function setup(page: Page) {
     failDashboard: false,
     unauthorized: false,
   };
-  const token = `header.${Buffer.from(JSON.stringify({ sub: a1, role: "TenantAdmin" })).toString("base64url")}.signature`;
+  const token = `header.${Buffer.from(JSON.stringify({ sub: a1, role })).toString("base64url")}.signature`;
   await page.route("**/api/v1/**", async (route) => {
     const req = route.request(),
       url = new URL(req.url()),
@@ -140,7 +140,7 @@ async function setup(page: Page) {
           ),
         );
       if (!id) {
-        const admin = { ...admins[0], id: "new-admin", email: body.email };
+        const admin = { ...admins[0], id: "new-admin", email: body.email, role: body.role };
         admins.push(admin);
         return send(admin, 201);
       }
@@ -151,7 +151,7 @@ async function setup(page: Page) {
         admin,
         method === "PATCH"
           ? { isActive: body.isActive }
-          : { email: body.email },
+          : { email: body.email, role: body.role },
       );
       return send(admin);
     }
@@ -401,6 +401,30 @@ test("numeric precision is rejected without silently rounding", async ({
   await expect(page.getByText("Use at most 2 decimal places.")).toBeVisible();
   expect(state.requests.some((r) => r.method === "PUT")).toBe(false);
 });
+test("staff can use their own account but cannot navigate to user management", async ({ page }) => {
+  await setup(page, "TenantStaff");
+  await login(page);
+  await expect(page.getByRole("link", { name: "User Management" })).toHaveCount(0);
+  await page.getByRole("link", { name: "My Account" }).click();
+  await expect(page.getByRole("heading", { name: "My Account" })).toBeVisible();
+  await page.goto("/administrators");
+  await expect(page).toHaveURL(/\/dashboard$/);
+});
+test("granting organisation administrator requires confirmation", async ({ page }) => {
+  const state = await setup(page);
+  await login(page, "/administrators");
+  await page.getByRole("button", { name: "Add user" }).click();
+  await page.getByRole("textbox", { name: "Administrator email", exact: true }).fill("new@example.test");
+  await page.getByLabel("Initial password").fill("new-test-password1!");
+  await page.getByLabel("Confirm password").fill("new-test-password1!");
+  await page.getByLabel("Role", { exact: true }).selectOption("TenantAdmin");
+  page.once("dialog", dialog => dialog.dismiss());
+  await page.getByRole("button", { name: "Save administrator" }).click();
+  expect(state.requests.some(r => r.method === "POST" && r.path.endsWith("/admin-users"))).toBe(false);
+  page.once("dialog", dialog => dialog.accept());
+  await page.getByRole("button", { name: "Save administrator" }).click();
+  await expect.poll(() => state.requests.some(r => r.method === "POST" && r.path.endsWith("/admin-users") && r.body.role === "TenantAdmin")).toBe(true);
+});
 test("admin management reuses scoped endpoints and protects self-deactivation", async ({
   page,
 }) => {
@@ -410,12 +434,13 @@ test("admin management reuses scoped endpoints and protects self-deactivation", 
     page.getByRole("button", { name: "Deactivate", exact: true }),
   ).toBeDisabled();
   await page
-    .getByRole("button", { name: "Add administrator", exact: false })
+    .getByRole("button", { name: "Add user", exact: false })
     .click();
   await page
     .getByRole("textbox", { name: "Administrator email", exact: true })
     .fill("second@example.test");
-  await page.getByLabel("Initial password").fill("new-test-password");
+  await page.getByLabel("Initial password").fill("new-test-password1!");
+  await page.getByLabel("Confirm password").fill("new-test-password1!");
   await page.getByRole("button", { name: "Save administrator" }).click();
   await expect(
     page.getByText("second@example.test", { exact: true }),
@@ -424,11 +449,12 @@ test("admin management reuses scoped endpoints and protects self-deactivation", 
     (r) => r.method === "POST" && r.path.endsWith("/admin-users"),
   )!;
   expect(request.query.get("tenantCode")).toBe("NTM");
-  expect(request.body.role).toBe("TenantAdmin");
+  expect(request.body.role).toBe("TenantStaff");
   expect(request.body.tenantId).toBeUndefined();
   const row = page.getByRole("row").filter({ hasText: "second@example.test" });
   await row.getByRole("button", { name: "Reset password" }).click();
-  await page.getByLabel("New password").fill("replacement-test-password");
+  await page.getByLabel("New password").fill("replacement-test-password1!");
+  await page.getByLabel("Confirm password").fill("replacement-test-password1!");
   await page.getByRole("button", { name: "Save administrator" }).click();
   await expect(
     page.getByText("Password updated.", { exact: false }),
@@ -437,7 +463,7 @@ test("admin management reuses scoped endpoints and protects self-deactivation", 
     state.requests.some(
       (r) =>
         r.path.endsWith("/reset-password") &&
-        r.body.newPassword === "replacement-test-password",
+        r.body.newPassword === "replacement-test-password1!",
     ),
   ).toBe(true);
 });
@@ -445,7 +471,7 @@ test("403 stays signed in and 401 redirects to sign-in", async ({ page }) => {
   const state = await setup(page);
   await login(page);
   state.denyAdmins = true;
-  await page.getByRole("link", { name: "Administrators", exact: true }).click();
+  await page.getByRole("link", { name: "User Management", exact: true }).click();
   await expect(
     page.getByText("This account cannot access this area.", { exact: false }),
   ).toBeVisible();

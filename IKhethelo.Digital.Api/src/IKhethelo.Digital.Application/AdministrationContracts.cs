@@ -55,7 +55,7 @@ public static class AdministratorValidation
     }
     public static void Role(string? role)
     {
-        if (role != nameof(AdminRole.TenantAdmin))
-            throw new RequestFailure(422, "Only TenantAdmin may be assigned through tenant administrator management.", new() { ["role"] = ["Choose TenantAdmin."] });
+        if (role is not (nameof(AdminRole.TenantAdmin) or nameof(AdminRole.TenantStaff)))
+            throw new RequestFailure(422, "Choose a tenant role.", new() { ["role"] = ["Choose TenantAdmin or TenantStaff."] });
     }
 }

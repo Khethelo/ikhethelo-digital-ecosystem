@@ -94,9 +94,9 @@ namespace IKhethelo.Digital.Infrastructure.Persistence.Migrations
 
                     b.ToTable("admin_users", null, t =>
                         {
-                            t.HasCheckConstraint("ck_admin_users_role", "role IN ('TenantAdmin', 'IKhetheloAdmin')");
+                            t.HasCheckConstraint("ck_admin_users_role", "role IN ('TenantAdmin', 'TenantStaff', 'IKhetheloAdmin')");
 
-                            t.HasCheckConstraint("ck_admin_users_tenant_scope", "(role = 'TenantAdmin' AND tenant_id IS NOT NULL) OR (role = 'IKhetheloAdmin' AND tenant_id IS NULL)");
+                            t.HasCheckConstraint("ck_admin_users_tenant_scope", "(role IN ('TenantAdmin', 'TenantStaff') AND tenant_id IS NOT NULL) OR (role = 'IKhetheloAdmin' AND tenant_id IS NULL)");
                         });
                 });
 

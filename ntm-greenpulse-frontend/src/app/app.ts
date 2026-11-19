@@ -38,6 +38,7 @@ export class App {}
         <span class="nav-caption">WORKSPACE</span>
         <nav aria-label="Main navigation">
           @for (item of navigation; track item.path) {
+            @if (item.path !== '/administrators' || auth.role() === 'TenantAdmin' || auth.role() === 'IKhetheloAdmin') {
             <a
               [routerLink]="item.path"
               routerLinkActive="active"
@@ -49,6 +50,7 @@ export class App {}
               }}</span
               >{{ item.label }}</a
             >
+            }
           }
         </nav>
         <div class="sidebar-foot">
@@ -103,7 +105,8 @@ export class Shell {
     { path: "/dashboard", label: "Overview", symbol: "◈" },
     { path: "/veterans", label: "Veterans", symbol: "○" },
     { path: "/businesses", label: "Businesses", symbol: "▤" },
-    { path: "/administrators", label: "Administrators", symbol: "⚙" },
+    { path: "/administrators", label: "User Management", symbol: "⚙" },
+    { path: "/account", label: "My Account", symbol: "○" },
   ];
   async signOut() {
     if (await this.router.navigateByUrl("/login")) this.auth.logout();
@@ -169,11 +172,13 @@ export const routes: Routes = [
       },
       {
         path: "administrators",
-        title: "Administrators · NTM GreenPulse",
+        title: "User Management · NTM GreenPulse",
+        canActivate: [() => ['TenantAdmin', 'IKhetheloAdmin'].includes(inject(Auth).role() ?? '') ? true : inject(Router).createUrlTree(['/dashboard'])],
         canDeactivate: [leaveDraft],
         loadComponent: () =>
           import("./pages/administrators").then((m) => m.Administrators),
       },
+      { path: "account", title: "My Account · NTM GreenPulse", loadComponent: () => import("./pages/my-account").then(m => m.MyAccount) },
       { path: "**", redirectTo: "dashboard" },
     ],
   },

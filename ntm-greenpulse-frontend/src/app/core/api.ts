@@ -134,17 +134,17 @@ export class Api {
       params: this.adminParams(query),
     });
   }
-  createAdministrator(email: string, password: string) {
+  createAdministrator(email: string, password: string, role = "TenantStaff") {
     return this.http.post<Administrator>(
       this.admins,
-      { email, password, role: "TenantAdmin" },
+      { email, password, role },
       { params: this.adminParams() },
     );
   }
-  updateAdministrator(id: string, email: string) {
+  updateAdministrator(id: string, email: string, role = "TenantStaff") {
     return this.http.put<Administrator>(
       `${this.admins}/${encodeURIComponent(id)}`,
-      { email, role: "TenantAdmin" },
+      { email, role },
       { params: this.adminParams() },
     );
   }

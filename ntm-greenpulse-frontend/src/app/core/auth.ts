@@ -12,7 +12,7 @@ const sessionKey = "ntm-greenpulse-session";
 
 export function safeReturn(value: string | null): string {
   return value &&
-    /^\/(dashboard|veterans|businesses|administrators)(?:[/?#]|$)/.test(
+    /^\/(dashboard|veterans|businesses|administrators|account)(?:[/?#]|$)/.test(
       value,
     ) &&
     !/[\\\r\n]/.test(value)
@@ -31,6 +31,7 @@ export class Auth {
   readonly signedIn = signal(false);
   readonly message = signal("");
   readonly actorId = signal<string | null>(null);
+  readonly role = signal<string | null>(null);
   constructor() {
     inject(DestroyRef).onDestroy(() => clearTimeout(this.timer));
     try {
@@ -54,8 +55,10 @@ export class Auth {
     clearTimeout(this.timer);
     try {
       const payload = access.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-      this.actorId.set(JSON.parse(atob(payload)).sub ?? null);
-    } catch { this.actorId.set(null); }
+      const claims = JSON.parse(atob(payload));
+      this.actorId.set(claims.sub ?? null);
+      this.role.set(claims.role ?? null);
+    } catch { this.actorId.set(null); this.role.set(null); }
     this.timer = setTimeout(() => this.logout(true), Math.max(0, expiresAt - Date.now()));
   }
   login(email: string, password: string) {
@@ -93,6 +96,7 @@ export class Auth {
     this.expiresAt = 0;
     this.signedIn.set(false);
     this.actorId.set(null);
+    this.role.set(null);
     clearTimeout(this.timer);
     try { sessionStorage.removeItem(sessionKey); } catch { /* Storage is unavailable. */ }
   }

@@ -32,7 +32,8 @@ For a live connection, an operator must first deploy the reviewed backend migrat
 - `/veterans/new`, `/veterans/:id`: create/edit veteran identity/contact fields, optional linked business and original membership reference. Either an actual MKMVA or DMV number is required.
 - `/businesses`: server-side business-name search, exact sector and status filters, pagination and contextual `veteranId` filtering.
 - `/businesses/new`, `/businesses/:id`: business profile, operations, needs/funding and assessment metadata. Available-owner selection is searched and paginated on the server. Veterans with an existing business open that business; racing duplicate assignments show HTTP 409 and keep unsaved form values.
-- `/administrators`: tenant-scoped account search/pagination, creation, email editing, activation/deactivation and password resets. Only TenantAdmin is assigned. Backend permissions remain authoritative; internal NTM access does not imply account-management access.
+- `/administrators`: tenant-scoped user management for Organisation Administrators, including role assignment and password resets. New accounts default to Admin (TenantStaff); promotion requires confirmation. Backend permissions remain authoritative; internal NTM access does not imply account-management access.
+- `/account`: change the signed-in user's password without access to other accounts.
 
 Original business workbook values remain in the database and are excluded from administrator forms and API responses. Business updates preserve this historical metadata. No import/export, veteran accounts, history tables, deletes, notifications or extra workflows are introduced.
 

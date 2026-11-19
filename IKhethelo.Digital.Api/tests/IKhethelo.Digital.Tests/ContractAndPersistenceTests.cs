@@ -69,7 +69,7 @@ public sealed class ContractAndPersistenceTests(ApiFixture fixture)
         var baseline = await CatalogAsync(fixture.BaselineConnection); var migrated = await CatalogAsync(fixture.Connection);
         Assert.Equal(baseline, migrated);
         await using var db = fixture.Db(); Assert.False(db.Database.HasPendingModelChanges());
-        Assert.Equal(4, (await db.Database.GetAppliedMigrationsAsync()).Count());
+        Assert.Equal(5, (await db.Database.GetAppliedMigrationsAsync()).Count());
     }
     private static async Task<string[]> CatalogAsync(string connection)
     {

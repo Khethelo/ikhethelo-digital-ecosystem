@@ -13,7 +13,7 @@ info:
     audited tenant selection, including reads. No implicit all-tenant operations.
     Reject unknown request properties. JSON write bodies are limited to 16 KiB.
     Malformed transport and unknown properties are 400; field/business validation is 422; racing state is 409.
-    TenantAdmin manages TenantAdmin accounts within its assigned tenant. Internal
+    TenantAdmin manages TenantAdmin and TenantStaff accounts within its assigned tenant. Internal
     administrator management requires a separate explicit AdminUserManagement tenant grant.
     All timestamps are UTC RFC3339. Lists are tenant-scoped before filtering/counting.
 servers:
@@ -347,7 +347,7 @@ paths:
     post:
       operationId: createAdministrator
       tags: [Administrators]
-      summary: Create an active TenantAdmin in the authorized tenant
+      summary: Create an active tenant user in the authorized tenant
       requestBody:
         required: true
         content:
@@ -1539,18 +1539,18 @@ components:
     AdminCreate:
       type: object
       additionalProperties: false
-      required: [email, password, role]
+      required: [email, password]
       properties:
         email: {$ref: '#/components/schemas/Email'}
         password: {type: string, minLength: 8, maxLength: 128, writeOnly: true, description: 'Must contain an ASCII digit and a character that is not a Unicode letter, number or whitespace.'}
-        role: {type: string, enum: [TenantAdmin]}
+        role: {type: string, enum: [TenantAdmin, TenantStaff], default: TenantStaff}
     AdminUpdate:
       type: object
       additionalProperties: false
       required: [email, role]
       properties:
         email: {$ref: '#/components/schemas/Email'}
-        role: {type: string, enum: [TenantAdmin]}
+        role: {type: string, enum: [TenantAdmin, TenantStaff]}
     AdminStatusUpdate:
       type: object
       additionalProperties: false
@@ -1578,7 +1578,7 @@ components:
       properties:
         id: {type: string, format: uuid}
         email: {$ref: '#/components/schemas/Email'}
-        role: {type: string, enum: [TenantAdmin]}
+        role: {type: string, enum: [TenantAdmin, TenantStaff]}
         isActive: {type: boolean}
         createdAtUtc: {type: string, format: date-time}
         updatedAtUtc: {type: string, format: date-time}
