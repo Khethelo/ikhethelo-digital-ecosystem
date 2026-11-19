@@ -45,8 +45,10 @@ public sealed class ErrorMiddleware(RequestDelegate next, ILogger<ErrorMiddlewar
             var pg = exception as PostgresException ?? (exception as DbUpdateException)?.InnerException as PostgresException;
             var status = failure?.Status ?? (exception is BadHttpRequestException bad ? bad.StatusCode :
                 pg?.SqlState is PostgresErrorCodes.UniqueViolation or PostgresErrorCodes.SerializationFailure or PostgresErrorCodes.DeadlockDetected ? 409 : 500);
-            if (status == 500) logger.LogError("Request failed. TraceId {TraceId}; exception type {ExceptionType}; inner type {InnerType}; database state {DatabaseState}",
-                context.TraceIdentifier, exception.GetType().Name, exception.InnerException?.GetType().Name, pg?.SqlState);
+            if (status == 500) logger.LogError("Request failed. TraceId {TraceId}; exception type {ExceptionType}; inner type {InnerType}; database state {DatabaseState}; methods {Methods}",
+                context.TraceIdentifier, exception.GetType().Name, exception.InnerException?.GetType().Name, pg?.SqlState,
+                string.Join(" <- ", new System.Diagnostics.StackTrace(exception, false).GetFrames().Take(20).Select(frame =>
+                    $"{frame.GetMethod()?.DeclaringType?.FullName}.{frame.GetMethod()?.Name}")));
             // Do not log raw exception objects: provider details may contain SQL or applicant PII.
             await Problems.WriteAsync(context, status, failure?.Message, failure?.Errors);
         }

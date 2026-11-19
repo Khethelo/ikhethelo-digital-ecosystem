@@ -183,6 +183,7 @@ if (!app.Environment.IsDevelopment())
     // Only set this when the public edge enforces HTTPS and private HTTP access is controlled.
     if (!builder.Configuration.GetValue<bool>("ReverseProxy:EdgeTerminatesTls")) app.UseHttpsRedirection();
 }
+app.UseHealthChecks("/healthz");
 app.UseRouting(); app.UseCors();
 app.UseAuthentication(); app.UseRateLimiter();
 app.UseMiddleware<TenantScopeMiddleware>(); app.UseAuthorization();
@@ -192,7 +193,6 @@ if (app.Environment.IsDevelopment())
     app.MapGet("/swagger/contract.yaml", () => Results.File(Path.Combine(AppContext.BaseDirectory, "Contract", "ikhethelo-digital-api.openapi.yaml"), "application/yaml")).AllowAnonymous();
     app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/contract.yaml", "iKhethelo Digital API v1"));
 }
-app.MapHealthChecks("/healthz").AllowAnonymous();
 app.MapControllers();
 await app.RunAsync();
 public partial class Program;
