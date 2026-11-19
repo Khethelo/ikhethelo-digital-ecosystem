@@ -27,7 +27,9 @@ public sealed class IntegrationTests(ApiFixture fixture)
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.True(response.Headers.CacheControl?.NoStore);
         var token = (await response.Content.ReadFromJsonAsync<TokenResponse>())!;
-        Assert.Equal(900, token.ExpiresIn); Assert.Equal("Bearer", token.TokenType);
+        Assert.Equal(1800, token.ExpiresIn); Assert.Equal("Bearer", token.TokenType);
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token.AccessToken);
+        Assert.Equal(TimeSpan.FromMinutes(30), jwt.ValidTo - jwt.ValidFrom);
         client.DefaultRequestHeaders.Authorization = new("Bearer", token.AccessToken); return client;
     }
     private async Task<Guid> SubmitAsync(ApplicationSubmission? submission = null, string? path = null)

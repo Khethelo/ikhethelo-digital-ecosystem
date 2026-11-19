@@ -2,7 +2,7 @@ import { Component, DestroyRef, inject, signal } from "@angular/core";
 import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
-import { finalize, switchMap } from "rxjs";
+import { finalize, switchMap, tap } from "rxjs";
 import { Auth, safeReturn } from "../core/auth";
 import { Api } from "../core/api";
 import { Issue, applyErrors, issueOf, maxText } from "../core/forms";
@@ -74,8 +74,7 @@ import { Field, IssueBox } from "../shared/ui";
         </form>
         <p class="login-note">
           For authorised NTM administrators. Contact your administrator for
-          account access or a password reset. Refreshing this page ends your
-          session.
+          account access or a password reset. Your session lasts 30 minutes.
         </p>
       </div>
     </main>
@@ -100,9 +99,11 @@ export class Login {
     this.pending.set(true);
     this.issue.set(null);
     const value = this.form.getRawValue();
+    let authenticated = false;
     this.auth
       .login(value.email, value.password)
       .pipe(
+        tap(() => (authenticated = true)),
         switchMap(() => this.api.dashboard()),
         takeUntilDestroyed(this.destroy),
         finalize(() => this.pending.set(false)),
@@ -116,7 +117,10 @@ export class Login {
         },
         error: (error) => {
           this.auth.clear();
-          this.issue.set(issueOf(error));
+          const issue = issueOf(error);
+          this.issue.set(!authenticated && issue.status === 401
+            ? { ...issue, message: "Email or password is incorrect, or your account is inactive. Please check your details and try again.", traceId: undefined }
+            : issue);
           applyErrors(this.form, error);
           this.form.controls.password.reset();
         },

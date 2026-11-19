@@ -24,6 +24,7 @@ public sealed class KestrelSmokeTests(ApiFixture fixture)
             CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden, RedirectStandardOutput = true, RedirectStandardError = true };
         start.ArgumentList.Add(assembly); start.ArgumentList.Add("--urls"); start.ArgumentList.Add($"http://127.0.0.1:{port}");
         start.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
+        start.Environment["Email__Enabled"] = "false";
         start.Environment["ConnectionStrings__DefaultConnection"] = fixture.Connection;
         start.Environment["Jwt__Issuer"] = "ikd-tests"; start.Environment["Jwt__Audience"] = "ikd-admin-tests";
         start.Environment["Jwt__PrivateKeyPem"] = fixture.PrivateKey;

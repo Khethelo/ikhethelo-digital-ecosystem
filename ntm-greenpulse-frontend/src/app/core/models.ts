@@ -48,11 +48,6 @@ export interface BusinessWrite {
   additionalComments?: string | null;
   assessmentDate?: string | null;
   assessedBy?: string | null;
-  sourceRecordNumber?: number | null;
-  operationalStatusSource?: string | null;
-  numberOfEmployeesSource?: string | null;
-  yearsInOperationSource?: string | null;
-  fundingRequiredSource?: string | null;
 }
 export interface Business {
   id: string;
@@ -74,11 +69,6 @@ export interface Business {
   assessedBy: string | null;
   createdAtUtc: string;
   updatedAtUtc: string;
-  sourceRecordNumber: number | null;
-  operationalStatusSource: string | null;
-  numberOfEmployeesSource: string | null;
-  yearsInOperationSource: string | null;
-  fundingRequiredSource: string | null;
 }
 export interface Count {
   value: string;

@@ -13,7 +13,9 @@ public sealed class ExistingDatabaseAdoption(DigitalDbContext db)
 {
     public const string InitialMigration = "20261105005230_InitialBaseline";
     public const string AdministrationMigration = "20261105154301_AdministrationAndMembershipCategories";
-    private static readonly string[] Tables = ["tenants", "admin_users", "membership_applications", "members", "audit_logs", "membership_categories"];
+    public const string NtmMigration = "20261112205247_NtmGreenPulseProvisional";
+    public const string NtmWorkbookMigration = "20261112210948_NtmWorkbookAlignment";
+    private static readonly string[] Tables = ["tenants", "admin_users", "membership_applications", "members", "audit_logs", "membership_categories", "ntm_veterans", "ntm_businesses"];
 
     public async Task<string> ExecuteAsync(CancellationToken ct)
     {
@@ -39,7 +41,7 @@ public sealed class ExistingDatabaseAdoption(DigitalDbContext db)
                 while (await rows.ReadAsync(ct)) applied.Add(rows.GetString(0));
             }
         }
-        if (applied.Except([InitialMigration, AdministrationMigration], StringComparer.Ordinal).Any())
+        if (applied.Except([InitialMigration, AdministrationMigration, NtmMigration, NtmWorkbookMigration], StringComparer.Ordinal).Any())
             throw new RequestFailure(409, "Unrecognized migration history. Adoption refused; the database was not changed.");
 
         // Lock only existing, known domain tables. This keeps their schema stable during verification.
@@ -63,14 +65,21 @@ public sealed class ExistingDatabaseAdoption(DigitalDbContext db)
         var initial = await CatalogAsync(connection, pgTransaction, reference, ct);
         await Run(migrator.GenerateScript(InitialMigration, AdministrationMigration, MigrationsSqlGenerationOptions.NoTransactions));
         var administration = await CatalogAsync(connection, pgTransaction, reference, ct);
+        await Run(migrator.GenerateScript(AdministrationMigration, NtmMigration, MigrationsSqlGenerationOptions.NoTransactions));
+        var ntm = await CatalogAsync(connection, pgTransaction, reference, ct);
+        await Run(migrator.GenerateScript(NtmMigration, NtmWorkbookMigration, MigrationsSqlGenerationOptions.NoTransactions));
+        var workbook = await CatalogAsync(connection, pgTransaction, reference, ct);
         await transaction.RollbackToSavepointAsync("reference_schema", ct);
         await transaction.ReleaseSavepointAsync("reference_schema", ct);
 
         var matchesInitial = actual.SequenceEqual(initial, StringComparer.Ordinal);
         var matchesAdministration = actual.SequenceEqual(administration, StringComparer.Ordinal);
-        if (!matchesInitial && !matchesAdministration)
+        var matchesNtm = actual.SequenceEqual(ntm, StringComparer.Ordinal);
+        var matchesWorkbook = actual.SequenceEqual(workbook, StringComparer.Ordinal);
+        if (!matchesInitial && !matchesAdministration && !matchesNtm && !matchesWorkbook)
         {
-            var expected = actual.Any(x => x.StartsWith("table|membership_categories|", StringComparison.Ordinal)) ? administration : initial;
+            var expected = actual.Any(x => x.StartsWith("table|ntm_", StringComparison.Ordinal)) ? workbook :
+                actual.Any(x => x.StartsWith("table|membership_categories|", StringComparison.Ordinal)) ? administration : initial;
             // Report object identifiers/definitions only; never read application rows or credentials.
             var differences = expected.Except(actual).Select(x => "Missing or different: " + ObjectName(x))
                 .Concat(actual.Except(expected).Select(x => "Unexpected or different: " + ObjectName(x))).Take(12);
@@ -78,6 +87,10 @@ public sealed class ExistingDatabaseAdoption(DigitalDbContext db)
         }
         if (matchesInitial && applied.Contains(AdministrationMigration, StringComparer.Ordinal))
             throw new RequestFailure(409, "Migration history claims the administration upgrade, but its schema is absent. Adoption refused.");
+        if (!matchesNtm && !matchesWorkbook && applied.Contains(NtmMigration, StringComparer.Ordinal))
+            throw new RequestFailure(409, "Migration history claims the NTM upgrade, but its schema is absent. Adoption refused.");
+        if (!matchesWorkbook && applied.Contains(NtmWorkbookMigration, StringComparer.Ordinal))
+            throw new RequestFailure(409, "Migration history claims workbook alignment, but its schema is absent. Adoption refused.");
 
         await Run("""
             CREATE TABLE IF NOT EXISTS public."__EFMigrationsHistory" (
@@ -86,7 +99,9 @@ public sealed class ExistingDatabaseAdoption(DigitalDbContext db)
                 CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
             );
             """);
-        var verified = matchesAdministration ? new[] { InitialMigration, AdministrationMigration } : [InitialMigration];
+        var verified = matchesWorkbook ? new[] { InitialMigration, AdministrationMigration, NtmMigration, NtmWorkbookMigration } :
+            matchesNtm ? [InitialMigration, AdministrationMigration, NtmMigration] :
+            matchesAdministration ? [InitialMigration, AdministrationMigration] : [InitialMigration];
         foreach (var migration in verified)
         {
             await using var insert = new NpgsqlCommand("""
@@ -98,7 +113,8 @@ public sealed class ExistingDatabaseAdoption(DigitalDbContext db)
             await insert.ExecuteNonQueryAsync(ct);
         }
         await transaction.CommitAsync(ct);
-        return matchesAdministration
+        return matchesWorkbook ? "Existing workbook-aligned NTM schema verified; all four migrations are recorded. No domain data was changed." :
+            matchesNtm ? "Existing NTM schema verified; all three migrations are recorded. No domain data was changed." : matchesAdministration
             ? "Existing administration schema verified; both migrations are recorded. No domain data was changed."
             : "Existing original baseline verified; initial migration recorded. Run dotnet ef database update to apply the administration upgrade.";
     }

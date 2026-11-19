@@ -14,7 +14,7 @@ public sealed class PasswordTimingGuard(IPasswordHasher<AdminUser> hasher)
 public sealed class AdministratorAuthentication(DigitalDbContext db, IPasswordHasher<AdminUser> hasher,
     PasswordTimingGuard timing, ITokenIssuer tokens, TimeProvider clock) : IAdministratorAuthentication
 {
-    public async Task<TokenResponse> ExecuteAsync(LoginRequest request, CancellationToken ct)
+    public async Task<TokenResponse?> ExecuteAsync(LoginRequest request, CancellationToken ct)
     {
         Validation.Login(request);
         var normalized = Validation.NormalizeEmail(request.Email!);
@@ -23,7 +23,7 @@ public sealed class AdministratorAuthentication(DigitalDbContext db, IPasswordHa
         if (admin is null || verified == PasswordVerificationResult.Failed || !admin.IsActive ||
             (admin.Role == AdminRole.TenantAdmin && (admin.TenantId is null || admin.Tenant?.IsActive != true)) ||
             (admin.Role == AdminRole.IKhetheloAdmin && admin.TenantId is not null) || !Enum.IsDefined(admin.Role))
-            throw new RequestFailure(401, "Invalid credentials.");
+            return null;
         // Token is issued only after successful required persistence; never log it.
         var now = clock.GetUtcNow();
         if (verified == PasswordVerificationResult.SuccessRehashNeeded) admin.PasswordHash = hasher.HashPassword(admin, request.Password!);

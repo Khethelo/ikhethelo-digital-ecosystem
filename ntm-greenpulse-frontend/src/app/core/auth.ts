@@ -8,6 +8,8 @@ import { CanActivateFn, Router } from "@angular/router";
 import { catchError, tap, throwError } from "rxjs";
 import { CONFIG } from "./config";
 
+const sessionKey = "ntm-greenpulse-session";
+
 export function safeReturn(value: string | null): string {
   return value &&
     /^\/(dashboard|veterans|businesses|administrators)(?:[/?#]|$)/.test(
@@ -31,6 +33,30 @@ export class Auth {
   readonly actorId = signal<string | null>(null);
   constructor() {
     inject(DestroyRef).onDestroy(() => clearTimeout(this.timer));
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(sessionKey) ?? "null");
+      if (typeof saved?.access === "string" && saved.access &&
+          Number.isFinite(saved.expiresAt) && saved.expiresAt > Date.now() &&
+          saved.expiresAt <= Date.now() + 1800000) {
+        this.setSession(saved.access, saved.expiresAt);
+      } else {
+        sessionStorage.removeItem(sessionKey);
+      }
+    } catch {
+      try { sessionStorage.removeItem(sessionKey); } catch { /* Storage is unavailable. */ }
+    }
+  }
+  private setSession(access: string, expiresAt: number) {
+    this.access = access;
+    this.expiresAt = expiresAt;
+    this.signedIn.set(true);
+    this.message.set("");
+    clearTimeout(this.timer);
+    try {
+      const payload = access.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+      this.actorId.set(JSON.parse(atob(payload)).sub ?? null);
+    } catch { this.actorId.set(null); }
+    this.timer = setTimeout(() => this.logout(true), Math.max(0, expiresAt - Date.now()));
   }
   login(email: string, password: string) {
     const revision = ++this.revision;
@@ -48,25 +74,9 @@ export class Auth {
             response.expiresIn !== 1800
           )
             throw new Error("Unexpected authentication response.");
-          this.access = response.accessToken;
-          this.expiresAt = Date.now() + response.expiresIn * 1000;
-          this.signedIn.set(true);
-          this.message.set("");
-          clearTimeout(this.timer);
-          try {
-            const payload = response.accessToken
-              .split(".")[1]
-              .replace(/-/g, "+")
-              .replace(/_/g, "/");
-            this.actorId.set(JSON.parse(atob(payload)).sub ?? null);
-          } catch {
-            this.actorId.set(null);
-          }
-          // Claims are only display hints. All authorization is enforced by the backend.
-          this.timer = setTimeout(
-            () => this.logout(true),
-            response.expiresIn * 1000,
-          );
+          const expiresAt = Date.now() + response.expiresIn * 1000;
+          this.setSession(response.accessToken, expiresAt);
+          try { sessionStorage.setItem(sessionKey, JSON.stringify({ access: response.accessToken, expiresAt })); } catch { /* Continue in memory if storage is unavailable. */ }
         }),
       );
   }
@@ -84,6 +94,7 @@ export class Auth {
     this.signedIn.set(false);
     this.actorId.set(null);
     clearTimeout(this.timer);
+    try { sessionStorage.removeItem(sessionKey); } catch { /* Storage is unavailable. */ }
   }
   logout(expired = false) {
     const returnUrl = safeReturn(this.router.url);

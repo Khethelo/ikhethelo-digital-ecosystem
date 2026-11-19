@@ -97,13 +97,6 @@ import { Field, FieldSpec, IssueBox } from "../shared/ui";
               }
             }
           </section>
-          <section class="panel guidance">
-            <h2>Registration details</h2>
-            <p>
-              Either an actual MKMVA or DMV number is enough. Generic references
-              such as “DMV Database” are not registration numbers.
-            </p>
-          </section>
         </aside>
       </div>
     }`,

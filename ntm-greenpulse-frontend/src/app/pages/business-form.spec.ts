@@ -70,11 +70,10 @@ describe("business assessment ownership and preservation", () => {
     http.expectOne("/api/v1/admin/tenants/NTM/ntm/veterans/v1").flush(veteran);
     return fixture;
   }
-  it("retains every original source field during full PUT even if a form source control is changed", () => {
+  it("omits historical fields during full PUT", () => {
     const fixture = existing();
     const page = fixture.componentInstance;
     vi.spyOn(TestBed.inject(Router), "navigate").mockResolvedValue(true);
-    page.form.controls.numberOfEmployeesSource.setValue("accidental change");
     page.form.controls.businessName.setValue("Updated business");
     page.save();
     const req = http.expectOne("/api/v1/admin/tenants/NTM/ntm/businesses/b1");
@@ -86,7 +85,7 @@ describe("business assessment ownership and preservation", () => {
       "fundingRequiredSource",
       "sourceRecordNumber",
     ] as const)
-      expect(req.request.body[key]).toBe(business[key]);
+      expect(req.request.body[key]).toBeUndefined();
     expect(req.request.body.fundingRequired).toBe(false);
     expect(req.request.body.fundingAmount).toBe(0);
     expect(req.request.body.assessmentDate).toBe("2026-10-13");
@@ -135,7 +134,6 @@ describe("business assessment ownership and preservation", () => {
     page.form.patchValue({
       veteranId: "v1",
       businessName: "Unsaved business",
-      numberOfEmployeesSource: "3 part time",
     });
     page.save();
     http
@@ -144,9 +142,6 @@ describe("business assessment ownership and preservation", () => {
     http.expectOne("/api/v1/admin/tenants/NTM/ntm/veterans/v1").flush(veteran);
     expect(page.issue()?.status).toBe(409);
     expect(page.form.controls.businessName.value).toBe("Unsaved business");
-    expect(page.form.controls.numberOfEmployeesSource.value).toBe(
-      "3 part time",
-    );
     expect(page.canAssign()).toBe(false);
   });
 });

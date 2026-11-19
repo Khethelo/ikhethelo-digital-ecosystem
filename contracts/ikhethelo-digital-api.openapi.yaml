@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: iKhethelo Digital API
-  version: 1.1.0
+  version: 1.2.0
   description: |
     Shared IKhethelo.Digital.Api HTTP contract including tenant administration.
     Reconciled with database/ikhethelo_digital_postgresql_baseline.sql.
@@ -548,6 +548,554 @@ paths:
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
         '500': {$ref: '#/components/responses/ServerError'}
+  /api/v1/admin/tenants/{tenantCode}/ntm/veterans: {
+        "parameters":  [
+                           {
+                               "$ref":  "#/components/parameters/TenantCode"
+                           }
+                       ],
+        "get":  {
+                    "tags":  [
+                                 "NTM GreenPulse"
+                             ],
+                    "operationId":  "ntmgetVeteranCollection",
+                    "description":  "Verified workbook mapping. Requires enabled tenant, active administrator and NtmAccess; internal access needs separate CrossTenantNtm grant.",
+                    "responses":  {
+                                      "200":  {
+                                                  "content":  {
+                                                                  "application/json":  {
+                                                                                           "schema":  {
+                                                                                                          "$ref":  "#/components/schemas/NtmVeteranPage"
+                                                                                                      }
+                                                                                       }
+                                                              },
+                                                  "description":  "Success"
+                                              },
+                                      "400":  {
+                                                  "$ref":  "#/components/responses/BadRequest"
+                                              },
+                                      "401":  {
+                                                  "$ref":  "#/components/responses/Unauthorized"
+                                              },
+                                      "403":  {
+                                                  "$ref":  "#/components/responses/Forbidden"
+                                              },
+                                      "404":  {
+                                                  "$ref":  "#/components/responses/NotFound"
+                                              },
+                                      "409":  {
+                                                  "$ref":  "#/components/responses/Conflict"
+                                              },
+                                      "413":  {
+                                                  "$ref":  "#/components/responses/TooLarge"
+                                              },
+                                      "415":  {
+                                                  "$ref":  "#/components/responses/UnsupportedMedia"
+                                              },
+                                      "422":  {
+                                                  "$ref":  "#/components/responses/ValidationFailed"
+                                              },
+                                      "500":  {
+                                                  "$ref":  "#/components/responses/ServerError"
+                                              }
+                                  },
+                    "parameters":  [
+                                       {
+                                           "$ref":  "#/components/parameters/Page"
+                                       },
+                                       {
+                                           "$ref":  "#/components/parameters/PageSize"
+                                       },
+                                       {
+                                           "name":  "search",
+                                           "in":  "query",
+                                           "schema":  {
+                                                          "maxLength":  200,
+                                                          "type":  "string"
+                                                      }
+                                       },
+                                       {
+                                           "name":  "hasBusiness",
+                                           "in":  "query",
+                                           "schema":  {
+                                                          "type":  "boolean"
+                                                      }
+                                       }
+                                   ]
+                },
+        "post":  {
+                     "tags":  [
+                                  "NTM GreenPulse"
+                              ],
+                     "operationId":  "ntmpostVeteranCollection",
+                     "description":  "Verified workbook mapping. Requires enabled tenant, active administrator and NtmAccess; internal access needs separate CrossTenantNtm grant.",
+                     "responses":  {
+                                       "201":  {
+                                                   "content":  {
+                                                                   "application/json":  {
+                                                                                            "schema":  {
+                                                                                                           "$ref":  "#/components/schemas/NtmVeteran"
+                                                                                                       }
+                                                                                        }
+                                                               },
+                                                   "description":  "Success"
+                                               },
+                                       "400":  {
+                                                   "$ref":  "#/components/responses/BadRequest"
+                                               },
+                                       "401":  {
+                                                   "$ref":  "#/components/responses/Unauthorized"
+                                               },
+                                       "403":  {
+                                                   "$ref":  "#/components/responses/Forbidden"
+                                               },
+                                       "404":  {
+                                                   "$ref":  "#/components/responses/NotFound"
+                                               },
+                                       "409":  {
+                                                   "$ref":  "#/components/responses/Conflict"
+                                               },
+                                       "413":  {
+                                                   "$ref":  "#/components/responses/TooLarge"
+                                               },
+                                       "415":  {
+                                                   "$ref":  "#/components/responses/UnsupportedMedia"
+                                               },
+                                       "422":  {
+                                                   "$ref":  "#/components/responses/ValidationFailed"
+                                               },
+                                       "500":  {
+                                                   "$ref":  "#/components/responses/ServerError"
+                                               }
+                                   },
+                     "requestBody":  {
+                                         "content":  {
+                                                         "application/json":  {
+                                                                                  "schema":  {
+                                                                                                 "$ref":  "#/components/schemas/NtmVeteranWrite"
+                                                                                             }
+                                                                              }
+                                                     },
+                                         "required":  true
+                                     }
+                 }
+    }
+  /api/v1/admin/tenants/{tenantCode}/ntm/veterans/{id}: {
+        "parameters":  [
+                           {
+                               "$ref":  "#/components/parameters/TenantCode"
+                           },
+                           {
+                               "$ref":  "#/components/parameters/Id"
+                           }
+                       ],
+        "get":  {
+                    "tags":  [
+                                 "NTM GreenPulse"
+                             ],
+                    "operationId":  "ntmgetVeteranDetail",
+                    "description":  "Verified workbook mapping. Requires enabled tenant, active administrator and NtmAccess; internal access needs separate CrossTenantNtm grant.",
+                    "responses":  {
+                                      "200":  {
+                                                  "content":  {
+                                                                  "application/json":  {
+                                                                                           "schema":  {
+                                                                                                          "$ref":  "#/components/schemas/NtmVeteran"
+                                                                                                      }
+                                                                                       }
+                                                              },
+                                                  "description":  "Success"
+                                              },
+                                      "400":  {
+                                                  "$ref":  "#/components/responses/BadRequest"
+                                              },
+                                      "401":  {
+                                                  "$ref":  "#/components/responses/Unauthorized"
+                                              },
+                                      "403":  {
+                                                  "$ref":  "#/components/responses/Forbidden"
+                                              },
+                                      "404":  {
+                                                  "$ref":  "#/components/responses/NotFound"
+                                              },
+                                      "409":  {
+                                                  "$ref":  "#/components/responses/Conflict"
+                                              },
+                                      "413":  {
+                                                  "$ref":  "#/components/responses/TooLarge"
+                                              },
+                                      "415":  {
+                                                  "$ref":  "#/components/responses/UnsupportedMedia"
+                                              },
+                                      "422":  {
+                                                  "$ref":  "#/components/responses/ValidationFailed"
+                                              },
+                                      "500":  {
+                                                  "$ref":  "#/components/responses/ServerError"
+                                              }
+                                  }
+                },
+        "put":  {
+                    "tags":  [
+                                 "NTM GreenPulse"
+                             ],
+                    "operationId":  "ntmputVeteranDetail",
+                    "description":  "Verified workbook mapping. Requires enabled tenant, active administrator and NtmAccess; internal access needs separate CrossTenantNtm grant.",
+                    "responses":  {
+                                      "200":  {
+                                                  "content":  {
+                                                                  "application/json":  {
+                                                                                           "schema":  {
+                                                                                                          "$ref":  "#/components/schemas/NtmVeteran"
+                                                                                                      }
+                                                                                       }
+                                                              },
+                                                  "description":  "Success"
+                                              },
+                                      "400":  {
+                                                  "$ref":  "#/components/responses/BadRequest"
+                                              },
+                                      "401":  {
+                                                  "$ref":  "#/components/responses/Unauthorized"
+                                              },
+                                      "403":  {
+                                                  "$ref":  "#/components/responses/Forbidden"
+                                              },
+                                      "404":  {
+                                                  "$ref":  "#/components/responses/NotFound"
+                                              },
+                                      "409":  {
+                                                  "$ref":  "#/components/responses/Conflict"
+                                              },
+                                      "413":  {
+                                                  "$ref":  "#/components/responses/TooLarge"
+                                              },
+                                      "415":  {
+                                                  "$ref":  "#/components/responses/UnsupportedMedia"
+                                              },
+                                      "422":  {
+                                                  "$ref":  "#/components/responses/ValidationFailed"
+                                              },
+                                      "500":  {
+                                                  "$ref":  "#/components/responses/ServerError"
+                                              }
+                                  },
+                    "requestBody":  {
+                                        "content":  {
+                                                        "application/json":  {
+                                                                                 "schema":  {
+                                                                                                "$ref":  "#/components/schemas/NtmVeteranWrite"
+                                                                                            }
+                                                                             }
+                                                    },
+                                        "required":  true
+                                    }
+                }
+    }
+  /api/v1/admin/tenants/{tenantCode}/ntm/businesses: {
+        "parameters":  [
+                           {
+                               "$ref":  "#/components/parameters/TenantCode"
+                           }
+                       ],
+        "get":  {
+                    "tags":  [
+                                 "NTM GreenPulse"
+                             ],
+                    "operationId":  "ntmgetBusinessCollection",
+                    "description":  "Verified workbook mapping. Requires enabled tenant, active administrator and NtmAccess; internal access needs separate CrossTenantNtm grant.",
+                    "responses":  {
+                                      "200":  {
+                                                  "content":  {
+                                                                  "application/json":  {
+                                                                                           "schema":  {
+                                                                                                          "$ref":  "#/components/schemas/NtmBusinessPage"
+                                                                                                      }
+                                                                                       }
+                                                              },
+                                                  "description":  "Success"
+                                              },
+                                      "400":  {
+                                                  "$ref":  "#/components/responses/BadRequest"
+                                              },
+                                      "401":  {
+                                                  "$ref":  "#/components/responses/Unauthorized"
+                                              },
+                                      "403":  {
+                                                  "$ref":  "#/components/responses/Forbidden"
+                                              },
+                                      "404":  {
+                                                  "$ref":  "#/components/responses/NotFound"
+                                              },
+                                      "409":  {
+                                                  "$ref":  "#/components/responses/Conflict"
+                                              },
+                                      "413":  {
+                                                  "$ref":  "#/components/responses/TooLarge"
+                                              },
+                                      "415":  {
+                                                  "$ref":  "#/components/responses/UnsupportedMedia"
+                                              },
+                                      "422":  {
+                                                  "$ref":  "#/components/responses/ValidationFailed"
+                                              },
+                                      "500":  {
+                                                  "$ref":  "#/components/responses/ServerError"
+                                              }
+                                  },
+                    "parameters":  [
+                                       {
+                                           "$ref":  "#/components/parameters/Page"
+                                       },
+                                       {
+                                           "$ref":  "#/components/parameters/PageSize"
+                                       },
+                                       {
+                                           "name":  "search",
+                                           "in":  "query",
+                                           "schema":  {
+                                                          "maxLength":  200,
+                                                          "type":  "string"
+                                                      }
+                                       },
+                                       {
+                                           "name":  "sector",
+                                           "in":  "query",
+                                           "schema":  {
+                                                          "maxLength":  200,
+                                                          "type":  "string"
+                                                      }
+                                       },
+                                       {
+                                           "name":  "operationalStatus",
+                                           "in":  "query",
+                                           "schema":  {
+                                                          "enum":  [
+                                                                       "Operational",
+                                                                       "Partially Operational",
+                                                                       "Not Operational"
+                                                                   ],
+                                                          "type":  "string",
+                                                          "nullable":  true
+                                                      }
+                                       },
+                                       {
+                                           "name":  "veteranId",
+                                           "in":  "query",
+                                           "schema":  {
+                                                          "type":  "string",
+                                                          "format":  "uuid"
+                                                      }
+                                       }
+                                   ]
+                },
+        "post":  {
+                     "tags":  [
+                                  "NTM GreenPulse"
+                              ],
+                     "operationId":  "ntmpostBusinessCollection",
+                     "description":  "Verified workbook mapping. Requires enabled tenant, active administrator and NtmAccess; internal access needs separate CrossTenantNtm grant.",
+                     "responses":  {
+                                       "201":  {
+                                                   "content":  {
+                                                                   "application/json":  {
+                                                                                            "schema":  {
+                                                                                                           "$ref":  "#/components/schemas/NtmBusiness"
+                                                                                                       }
+                                                                                        }
+                                                               },
+                                                   "description":  "Success"
+                                               },
+                                       "400":  {
+                                                   "$ref":  "#/components/responses/BadRequest"
+                                               },
+                                       "401":  {
+                                                   "$ref":  "#/components/responses/Unauthorized"
+                                               },
+                                       "403":  {
+                                                   "$ref":  "#/components/responses/Forbidden"
+                                               },
+                                       "404":  {
+                                                   "$ref":  "#/components/responses/NotFound"
+                                               },
+                                       "409":  {
+                                                   "$ref":  "#/components/responses/Conflict"
+                                               },
+                                       "413":  {
+                                                   "$ref":  "#/components/responses/TooLarge"
+                                               },
+                                       "415":  {
+                                                   "$ref":  "#/components/responses/UnsupportedMedia"
+                                               },
+                                       "422":  {
+                                                   "$ref":  "#/components/responses/ValidationFailed"
+                                               },
+                                       "500":  {
+                                                   "$ref":  "#/components/responses/ServerError"
+                                               }
+                                   },
+                     "requestBody":  {
+                                         "content":  {
+                                                         "application/json":  {
+                                                                                  "schema":  {
+                                                                                                 "$ref":  "#/components/schemas/NtmBusinessWrite"
+                                                                                             }
+                                                                              }
+                                                     },
+                                         "required":  true
+                                     }
+                 }
+    }
+  /api/v1/admin/tenants/{tenantCode}/ntm/businesses/{id}: {
+        "parameters":  [
+                           {
+                               "$ref":  "#/components/parameters/TenantCode"
+                           },
+                           {
+                               "$ref":  "#/components/parameters/Id"
+                           }
+                       ],
+        "get":  {
+                    "tags":  [
+                                 "NTM GreenPulse"
+                             ],
+                    "operationId":  "ntmgetBusinessDetail",
+                    "description":  "Verified workbook mapping. Requires enabled tenant, active administrator and NtmAccess; internal access needs separate CrossTenantNtm grant.",
+                    "responses":  {
+                                      "200":  {
+                                                  "content":  {
+                                                                  "application/json":  {
+                                                                                           "schema":  {
+                                                                                                          "$ref":  "#/components/schemas/NtmBusiness"
+                                                                                                      }
+                                                                                       }
+                                                              },
+                                                  "description":  "Success"
+                                              },
+                                      "400":  {
+                                                  "$ref":  "#/components/responses/BadRequest"
+                                              },
+                                      "401":  {
+                                                  "$ref":  "#/components/responses/Unauthorized"
+                                              },
+                                      "403":  {
+                                                  "$ref":  "#/components/responses/Forbidden"
+                                              },
+                                      "404":  {
+                                                  "$ref":  "#/components/responses/NotFound"
+                                              },
+                                      "409":  {
+                                                  "$ref":  "#/components/responses/Conflict"
+                                              },
+                                      "413":  {
+                                                  "$ref":  "#/components/responses/TooLarge"
+                                              },
+                                      "415":  {
+                                                  "$ref":  "#/components/responses/UnsupportedMedia"
+                                              },
+                                      "422":  {
+                                                  "$ref":  "#/components/responses/ValidationFailed"
+                                              },
+                                      "500":  {
+                                                  "$ref":  "#/components/responses/ServerError"
+                                              }
+                                  }
+                },
+        "put":  {
+                    "tags":  [
+                                 "NTM GreenPulse"
+                             ],
+                    "operationId":  "ntmputBusinessDetail",
+                    "description":  "Verified workbook mapping. Requires enabled tenant, active administrator and NtmAccess; internal access needs separate CrossTenantNtm grant.",
+                    "responses":  {
+                                      "200":  {
+                                                  "content":  {
+                                                                  "application/json":  {
+                                                                                           "schema":  {
+                                                                                                          "$ref":  "#/components/schemas/NtmBusiness"
+                                                                                                      }
+                                                                                       }
+                                                              },
+                                                  "description":  "Success"
+                                              },
+                                      "400":  {
+                                                  "$ref":  "#/components/responses/BadRequest"
+                                              },
+                                      "401":  {
+                                                  "$ref":  "#/components/responses/Unauthorized"
+                                              },
+                                      "403":  {
+                                                  "$ref":  "#/components/responses/Forbidden"
+                                              },
+                                      "404":  {
+                                                  "$ref":  "#/components/responses/NotFound"
+                                              },
+                                      "409":  {
+                                                  "$ref":  "#/components/responses/Conflict"
+                                              },
+                                      "413":  {
+                                                  "$ref":  "#/components/responses/TooLarge"
+                                              },
+                                      "415":  {
+                                                  "$ref":  "#/components/responses/UnsupportedMedia"
+                                              },
+                                      "422":  {
+                                                  "$ref":  "#/components/responses/ValidationFailed"
+                                              },
+                                      "500":  {
+                                                  "$ref":  "#/components/responses/ServerError"
+                                              }
+                                  },
+                    "requestBody":  {
+                                        "content":  {
+                                                        "application/json":  {
+                                                                                 "schema":  {
+                                                                                                "$ref":  "#/components/schemas/NtmBusinessWrite"
+                                                                                            }
+                                                                             }
+                                                    },
+                                        "required":  true
+                                    }
+                }
+    }
+  /api/v1/admin/tenants/{tenantCode}/ntm/dashboard: {
+        "get":  {
+                    "operationId":  "ntmDashboard",
+                    "tags":  [
+                                 "NTM GreenPulse"
+                             ],
+                    "description":  "Recorded tenant aggregates from one consistent PostgreSQL snapshot. NtmAccess required.",
+                    "responses":  {
+                                      "401":  {
+                                                  "$ref":  "#/components/responses/Unauthorized"
+                                              },
+                                      "403":  {
+                                                  "$ref":  "#/components/responses/Forbidden"
+                                              },
+                                      "500":  {
+                                                  "$ref":  "#/components/responses/ServerError"
+                                              },
+                                      "404":  {
+                                                  "$ref":  "#/components/responses/NotFound"
+                                              },
+                                      "200":  {
+                                                  "content":  {
+                                                                  "application/json":  {
+                                                                                           "schema":  {
+                                                                                                          "$ref":  "#/components/schemas/NtmDashboard"
+                                                                                                      }
+                                                                                       }
+                                                              },
+                                                  "description":  "Recorded aggregates"
+                                              }
+                                  }
+                },
+        "parameters":  [
+                           {
+                               "$ref":  "#/components/parameters/TenantCode"
+                           }
+                       ]
+    }
 components:
   securitySchemes:
     BearerAuth:
@@ -596,6 +1144,381 @@ components:
       description: Trimmed case-insensitive literal substring; no regex/wildcards. Empty means no search. Contact search uses canonical normalization where applicable.
       schema: {type: string, maxLength: 320}
   schemas:
+    NtmVeteranWrite: {
+          "additionalProperties":  false,
+          "properties":  {
+                             "fullName":  {
+                                              "type":  "string",
+                                              "maxLength":  200
+                                          },
+                             "mkmvaNumber":  {
+                                                 "type":  "string",
+                                                 "maxLength":  100,
+                                                 "nullable":  true
+                                             },
+                             "dmvNumber":  {
+                                               "type":  "string",
+                                               "maxLength":  100,
+                                               "nullable":  true
+                                           },
+                             "contactNumber":  {
+                                                   "type":  "string",
+                                                   "maxLength":  50,
+                                                   "nullable":  true
+                                               },
+                             "emailAddress":  {
+                                                  "type":  "string",
+                                                  "maxLength":  320,
+                                                  "nullable":  true
+                                              },
+                             "membershipReference":  {
+                                                         "type":  "string",
+                                                         "maxLength":  100,
+                                                         "nullable":  true
+                                                     }
+                         },
+          "description":  "Verified workbook representation; source anomalies remain separate from validated values. At least one nonblank MKMVA or DMV number is required; each is case-insensitively unique per tenant.",
+          "type":  "object",
+          "required":  [
+                           "fullName"
+                       ]
+      }
+    NtmBusinessWrite: {
+          "additionalProperties":  false,
+          "properties":  {
+                             "veteranId":  {
+                                               "type":  "string",
+                                               "format":  "uuid"
+                                           },
+                             "businessName":  {
+                                                  "type":  "string",
+                                                  "maxLength":  200
+                                              },
+                             "cipcRegistrationNumber":  {
+                                                            "type":  "string",
+                                                            "maxLength":  100,
+                                                            "nullable":  true
+                                                        },
+                             "businessAddress":  {
+                                                     "type":  "string",
+                                                     "nullable":  true
+                                                 },
+                             "sector":  {
+                                            "type":  "string",
+                                            "maxLength":  200,
+                                            "nullable":  true
+                                        },
+                             "businessBackground":  {
+                                                        "type":  "string",
+                                                        "nullable":  true
+                                                    },
+                             "operationalStatus":  {
+                                                       "enum":  [
+                                                                    "Operational",
+                                                                    "Partially Operational",
+                                                                    "Not Operational"
+                                                                ],
+                                                       "type":  "string",
+                                                       "nullable":  true
+                                                   },
+                             "numberOfEmployees":  {
+                                                       "minimum":  0,
+                                                       "type":  "integer",
+                                                       "nullable":  true
+                                                   },
+                             "yearsInOperation":  {
+                                                      "minimum":  0,
+                                                      "type":  "number",
+                                                      "nullable":  true
+                                                  },
+                             "currentBusinessNeeds":  {
+                                                          "type":  "string",
+                                                          "nullable":  true
+                                                      },
+                             "priorityNeed":  {
+                                                  "type":  "string",
+                                                  "nullable":  true
+                                              },
+                             "fundingRequired":  {
+                                                     "nullable":  true,
+                                                     "type":  "boolean"
+                                                 },
+                             "fundingAmount":  {
+                                                   "minimum":  0,
+                                                   "type":  "number",
+                                                   "nullable":  true
+                                               },
+                             "additionalComments":  {
+                                                        "type":  "string",
+                                                        "nullable":  true
+                                                    },
+                             "assessmentDate":  {
+                                                    "format":  "date",
+                                                    "type":  "string",
+                                                    "nullable":  true
+                                                },
+                             "assessedBy":  {
+                                                "type":  "string",
+                                                "maxLength":  200,
+                                                "nullable":  true
+                                            }
+                         },
+          "description":  "Verified workbook representation; source anomalies remain separate from validated values. Existing same-tenant veteran required; at most one business per veteran.",
+          "type":  "object",
+          "required":  [
+                           "veteranId",
+                           "businessName"
+                       ]
+      }
+    NtmVeteran: {
+          "properties":  {
+                             "id":  {
+                                        "type":  "string",
+                                        "format":  "uuid"
+                                    },
+                             "fullName":  {
+                                              "type":  "string",
+                                              "maxLength":  200
+                                          },
+                             "mkmvaNumber":  {
+                                                 "type":  "string",
+                                                 "maxLength":  100,
+                                                 "nullable":  true
+                                             },
+                             "dmvNumber":  {
+                                               "type":  "string",
+                                               "maxLength":  100,
+                                               "nullable":  true
+                                           },
+                             "contactNumber":  {
+                                                   "type":  "string",
+                                                   "maxLength":  50,
+                                                   "nullable":  true
+                                               },
+                             "emailAddress":  {
+                                                  "type":  "string",
+                                                  "maxLength":  320,
+                                                  "nullable":  true
+                                              },
+                             "membershipReference":  {
+                                                         "type":  "string",
+                                                         "maxLength":  100,
+                                                         "nullable":  true
+                                                     },
+                             "createdAtUtc":  {
+                                                  "type":  "string",
+                                                  "format":  "date-time"
+                                              },
+                             "updatedAtUtc":  {
+                                                  "type":  "string",
+                                                  "format":  "date-time"
+                                              },
+                             "business":  {
+                                              "properties":  {
+                                                                 "id":  {
+                                                                            "type":  "string",
+                                                                            "format":  "uuid"
+                                                                        },
+                                                                 "businessName":  {
+                                                                                      "type":  "string"
+                                                                                  }
+                                                             },
+                                              "type":  "object",
+                                              "nullable":  true
+                                          }
+                         },
+          "type":  "object"
+      }
+    NtmBusiness: {
+          "properties":  {
+                             "id":  {
+                                        "type":  "string",
+                                        "format":  "uuid"
+                                    },
+                             "veteranId":  {
+                                               "type":  "string",
+                                               "format":  "uuid"
+                                           },
+                             "businessName":  {
+                                                  "type":  "string",
+                                                  "maxLength":  200
+                                              },
+                             "cipcRegistrationNumber":  {
+                                                            "type":  "string",
+                                                            "maxLength":  100,
+                                                            "nullable":  true
+                                                        },
+                             "businessAddress":  {
+                                                     "type":  "string",
+                                                     "nullable":  true
+                                                 },
+                             "sector":  {
+                                            "type":  "string",
+                                            "maxLength":  200,
+                                            "nullable":  true
+                                        },
+                             "businessBackground":  {
+                                                        "type":  "string",
+                                                        "nullable":  true
+                                                    },
+                             "operationalStatus":  {
+                                                       "enum":  [
+                                                                    "Operational",
+                                                                    "Partially Operational",
+                                                                    "Not Operational"
+                                                                ],
+                                                       "type":  "string",
+                                                       "nullable":  true
+                                                   },
+                             "numberOfEmployees":  {
+                                                       "minimum":  0,
+                                                       "type":  "integer",
+                                                       "nullable":  true
+                                                   },
+                             "yearsInOperation":  {
+                                                      "minimum":  0,
+                                                      "type":  "number",
+                                                      "nullable":  true
+                                                  },
+                             "currentBusinessNeeds":  {
+                                                          "type":  "string",
+                                                          "nullable":  true
+                                                      },
+                             "priorityNeed":  {
+                                                  "type":  "string",
+                                                  "nullable":  true
+                                              },
+                             "fundingRequired":  {
+                                                     "nullable":  true,
+                                                     "type":  "boolean"
+                                                 },
+                             "fundingAmount":  {
+                                                   "minimum":  0,
+                                                   "type":  "number",
+                                                   "nullable":  true
+                                               },
+                             "additionalComments":  {
+                                                        "type":  "string",
+                                                        "nullable":  true
+                                                    },
+                             "assessmentDate":  {
+                                                    "format":  "date",
+                                                    "type":  "string",
+                                                    "nullable":  true
+                                                },
+                             "assessedBy":  {
+                                                "type":  "string",
+                                                "maxLength":  200,
+                                                "nullable":  true
+                                            },
+                             "createdAtUtc":  {
+                                                  "type":  "string",
+                                                  "format":  "date-time"
+                                              },
+                             "updatedAtUtc":  {
+                                                  "type":  "string",
+                                                  "format":  "date-time"
+                                              }
+                         },
+          "type":  "object"
+      }
+    NtmVeteranPage: {
+          "properties":  {
+                             "items":  {
+                                           "items":  {
+                                                         "$ref":  "#/components/schemas/NtmVeteran"
+                                                     },
+                                           "type":  "array"
+                                       },
+                             "page":  {
+                                          "type":  "integer"
+                                      },
+                             "pageSize":  {
+                                              "type":  "integer"
+                                          },
+                             "totalCount":  {
+                                                "type":  "integer",
+                                                "format":  "int64"
+                                            }
+                         },
+          "type":  "object"
+      }
+    NtmBusinessPage: {
+          "properties":  {
+                             "items":  {
+                                           "items":  {
+                                                         "$ref":  "#/components/schemas/NtmBusiness"
+                                                     },
+                                           "type":  "array"
+                                       },
+                             "page":  {
+                                          "type":  "integer"
+                                      },
+                             "pageSize":  {
+                                              "type":  "integer"
+                                          },
+                             "totalCount":  {
+                                                "type":  "integer",
+                                                "format":  "int64"
+                                            }
+                         },
+          "type":  "object"
+      }
+    NtmDashboard: {
+          "properties":  {
+                             "totalVeterans":  {
+                                                   "type":  "integer"
+                                               },
+                             "totalBusinesses":  {
+                                                     "type":  "integer"
+                                                 },
+                             "operationalBusinesses":  {
+                                                           "type":  "integer"
+                                                       },
+                             "partiallyOperationalBusinesses":  {
+                                                                    "type":  "integer"
+                                                                },
+                             "notOperationalBusinesses":  {
+                                                              "type":  "integer"
+                                                          },
+                             "fundingRequiredBusinesses":  {
+                                                               "type":  "integer"
+                                                           },
+                             "totalRecordedFundingAmount":  {
+                                                                "type":  "number",
+                                                                "description":  "Sum of all recorded amounts, independent of funding flag; South African Rand, as specified by the workbook."
+                                                            },
+                             "businessesBySector":  {
+                                                        "items":  {
+                                                                      "properties":  {
+                                                                                         "count":  {
+                                                                                                       "type":  "integer"
+                                                                                                   },
+                                                                                         "value":  {
+                                                                                                       "type":  "string"
+                                                                                                   }
+                                                                                     },
+                                                                      "type":  "object"
+                                                                  },
+                                                        "type":  "array"
+                                                    },
+                             "recordedPriorityNeeds":  {
+                                                           "items":  {
+                                                                         "properties":  {
+                                                                                            "count":  {
+                                                                                                          "type":  "integer"
+                                                                                                      },
+                                                                                            "value":  {
+                                                                                                          "type":  "string"
+                                                                                                      }
+                                                                                        },
+                                                                         "type":  "object"
+                                                                     },
+                                                           "type":  "array"
+                                                       }
+                         },
+          "type":  "object"
+      }
     AdminCreate:
       type: object
       additionalProperties: false
@@ -773,7 +1696,7 @@ components:
       properties:
         accessToken: {type: string, description: Sensitive signed JWT. Never log.}
         tokenType: {type: string, enum: [Bearer]}
-        expiresIn: {type: integer, enum: [900], description: Seconds until access token expiry.}
+        expiresIn: {type: integer, enum: [1800], description: Seconds until access token expiry.}
     ReviewRequest:
       type: object
       additionalProperties: false

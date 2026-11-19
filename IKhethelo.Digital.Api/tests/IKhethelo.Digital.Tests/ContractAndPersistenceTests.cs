@@ -23,7 +23,7 @@ public sealed class ContractAndPersistenceTests(ApiFixture fixture)
         var html = await response.Content.ReadAsStringAsync(); Assert.Contains("swagger-ui", html);
         var yaml = await fixture.Client.GetStringAsync("/swagger/contract.yaml");
         var contract = new OpenApiStringReader().Read(yaml, out var diagnostic);
-        Assert.Empty(diagnostic.Errors); Assert.Equal("1.1.0", contract.Info.Version);
+        Assert.Empty(diagnostic.Errors); Assert.Equal("1.2.0", contract.Info.Version);
         Assert.Equal("bearer", contract.Components.SecuritySchemes["BearerAuth"].Scheme);
         var expectedRoutes = contract.Paths.SelectMany(path => path.Value.Operations.Select(operation => operation.Key.ToString().ToUpperInvariant() + " " + path.Key)).Order().ToArray();
         var endpoints = fixture.Factory.Services.GetRequiredService<EndpointDataSource>().Endpoints.OfType<RouteEndpoint>();
@@ -42,7 +42,11 @@ public sealed class ContractAndPersistenceTests(ApiFixture fixture)
             ("AdminStatusUpdate", typeof(AdminStatusUpdate)), ("AdminPasswordReset", typeof(AdminPasswordReset)),
             ("MemberRegistration", typeof(MemberRegistration)), ("CategoryWrite", typeof(CategoryWrite)),
             ("MembershipCategory", typeof(CategoryResponse)), ("MemberCategoryUpdate", typeof(MemberCategoryUpdate)),
-            ("MemberCategory", typeof(MemberCategoryResponse)), ("MemberHistoryEntry", typeof(MemberHistoryEntry)) })
+            ("MemberCategory", typeof(MemberCategoryResponse)), ("MemberHistoryEntry", typeof(MemberHistoryEntry)),
+            ("NtmVeteranWrite", typeof(NtmVeteranWrite)), ("NtmVeteran", typeof(NtmVeteranResponse)),
+            ("NtmBusinessWrite", typeof(NtmBusinessWrite)), ("NtmBusiness", typeof(NtmBusinessResponse)),
+            ("NtmVeteranPage", typeof(Page<NtmVeteranResponse>)), ("NtmBusinessPage", typeof(Page<NtmBusinessResponse>)),
+            ("NtmDashboard", typeof(NtmDashboard)) })
         {
             var properties = dto.GetProperties().Select(property =>
                 property.GetCustomAttributes(typeof(System.Text.Json.Serialization.JsonPropertyNameAttribute), false)
@@ -65,7 +69,7 @@ public sealed class ContractAndPersistenceTests(ApiFixture fixture)
         var baseline = await CatalogAsync(fixture.BaselineConnection); var migrated = await CatalogAsync(fixture.Connection);
         Assert.Equal(baseline, migrated);
         await using var db = fixture.Db(); Assert.False(db.Database.HasPendingModelChanges());
-        Assert.Equal(2, (await db.Database.GetAppliedMigrationsAsync()).Count());
+        Assert.Equal(4, (await db.Database.GetAppliedMigrationsAsync()).Count());
     }
     private static async Task<string[]> CatalogAsync(string connection)
     {
@@ -98,7 +102,7 @@ public sealed class ContractAndPersistenceTests(ApiFixture fixture)
         await ApiFixture.ExecuteAsync(fixture.Connection, seed); await ApiFixture.ExecuteAsync(fixture.Connection, seed);
         await using var db = fixture.Db(); var rows = await db.Tenants.Where(x => x.Code == "ESHL").ToListAsync(); Assert.Single(rows);
         Assert.Equal(fixture.Eshl, rows[0].Id); Assert.True(rows[0].IsActive); Assert.Equal("Es'hlahleni Social Club", rows[0].Name);
-        Assert.Equal(new[] { "admin_users", "audit_logs", "members", "membership_applications", "membership_categories", "tenants" },
+        Assert.Equal(new[] { "admin_users", "audit_logs", "members", "membership_applications", "membership_categories", "ntm_businesses", "ntm_veterans", "tenants" },
             db.Model.GetEntityTypes().Select(x => x.GetTableName()!).Order().ToArray());
     }
     [Fact]

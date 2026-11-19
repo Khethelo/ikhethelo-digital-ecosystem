@@ -80,6 +80,7 @@ describe("authenticated NTM API", () => {
   let http: HttpTestingController;
   let api: Api;
   beforeEach(() => {
+    sessionStorage.clear();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
@@ -110,7 +111,7 @@ describe("authenticated NTM API", () => {
       expiresIn: 1800,
     });
   }
-  it("preserves raw descriptions, null, zero, false and calendar dates in exact business payloads", () => {
+  it("omits source fields and preserves null, zero, false and calendar dates", () => {
     const body = {
       veteranId: "v1",
       businessName: "Business",
@@ -126,9 +127,7 @@ describe("authenticated NTM API", () => {
     };
     api.createBusiness(body).subscribe();
     const req = http.expectOne("/api/v1/admin/tenants/NTM/ntm/businesses");
-    expect(req.request.body.numberOfEmployeesSource).toBe(
-      body.numberOfEmployeesSource,
-    );
+    expect(req.request.body.numberOfEmployeesSource).toBeUndefined();
     expect(req.request.body.fundingRequired).toBe(false);
     expect(req.request.body.fundingAmount).toBe(0);
     expect(req.request.body.numberOfEmployees).toBeNull();
@@ -197,7 +196,7 @@ describe("authenticated NTM API", () => {
     expect(reset.request.params.get("tenantCode")).toBe("NTM");
     reset.flush(null);
   });
-  it("sends the in-memory token only to protected same-origin API routes", () => {
+  it("sends the token only to protected same-origin API routes", () => {
     login();
     for (const url of [
       "/api/v1/admin/tenants/NTM/ntm/dashboard",
@@ -212,7 +211,18 @@ describe("authenticated NTM API", () => {
       req.flush({});
     }
     expect(localStorage.length).toBe(0);
-    expect(sessionStorage.length).toBe(0);
+    expect(sessionStorage.getItem("ntm-greenpulse-session")).toContain("test-token");
+  });
+  it("restores a session after refresh without extending its expiry", () => {
+    vi.useFakeTimers();
+    login();
+    vi.advanceTimersByTime(900000);
+    const restored = TestBed.runInInjectionContext(() => new Auth());
+    expect(restored.token()).toBe("test-token");
+    vi.spyOn(TestBed.inject(Router), "navigate").mockResolvedValue(true);
+    vi.advanceTimersByTime(900000);
+    expect(restored.token()).toBeNull();
+    expect(sessionStorage.getItem("ntm-greenpulse-session")).toBeNull();
   });
   it("clears expired sessions and handles 401 without treating 403 as logout", () => {
     vi.useFakeTimers();

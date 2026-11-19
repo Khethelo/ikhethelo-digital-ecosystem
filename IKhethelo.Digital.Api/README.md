@@ -2,6 +2,8 @@ See [current workflow and email setup](../docs/REGISTRATION_WORKFLOW.md). This s
 
 # iKhethelo Digital API
 
+The admin-only NTM GreenPulse module is documented in [NTM_MODULE.md](../docs/NTM_MODULE.md), with the [verified workbook mapping and source-data exceptions](../docs/NTM_SPREADSHEET_FIELD_MAPPING.md). NTM is disabled by default. Use the reviewed EF migration chain through NtmWorkbookAlignment; the supplied SQL is a reference, not a second deployment script.
+
 The shared ASP.NET Core modular monolith lives entirely in this directory. The governing master, five master documents, OpenAPI and approved SQL remain in the repository's shared directories. Read them before changing behavior. Angular and standalone products such as Practona are outside this backend.
 
 ## Build and configure
@@ -22,7 +24,7 @@ dotnet tool restore
 dotnet build --no-restore
 ```
 
-Configure `ConnectionStrings__DefaultConnection`, `Jwt__Issuer`, `Jwt__Audience`, and `Jwt__PrivateKeyPem` using environment variables or protected configuration. The key must be an RSA private PEM of at least 2048 bits. Never commit it. Development keys can be generated with `RSA.Create(2048).ExportRSAPrivateKeyPem()` in PowerShell 7 or .NET 10 (Windows PowerShell 5.1 does not provide that export method); production keys belong in managed secret storage. JWTs use RS256, a 15-minute expiry and at most 30 seconds clock skew. Rotate keys through an intentional operational rollout; this V1 host loads one configured signing key at startup.
+Configure `ConnectionStrings__DefaultConnection`, `Jwt__Issuer`, `Jwt__Audience`, and `Jwt__PrivateKeyPem` using environment variables or protected configuration. The key must be an RSA private PEM of at least 2048 bits. Never commit it. Development keys can be generated with `RSA.Create(2048).ExportRSAPrivateKeyPem()` in PowerShell 7 or .NET 10 (Windows PowerShell 5.1 does not provide that export method); production keys belong in managed secret storage. JWTs use RS256, a 30-minute expiry and at most 30 seconds clock skew. Rotate keys through an intentional operational rollout; this V1 host loads one configured signing key at startup.
 
 Set `ASPNETCORE_ENVIRONMENT=Development`, configure an approved development origin, then:
 

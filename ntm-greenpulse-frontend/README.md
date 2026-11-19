@@ -20,7 +20,7 @@ Open `http://localhost:4300`. The development proxy uses `https://localhost:5797
 { "apiBaseUrl": "/api/v1", "tenantCode": "NTM" }
 ```
 
-No secrets or tenant UUIDs belong in this file. Authentication uses the existing `/api/v1/auth/login`. Tokens remain in memory, expire after the backend's 30-minute lifetime and are never put in browser storage. A refresh requires sign-in again. The backend validates tenant membership and grants on every request; configuration and browser claims do not grant permissions.
+No secrets or tenant UUIDs belong in this file. Authentication uses the existing `/api/v1/auth/login`. The access token is kept in tab-scoped session storage so a refresh retains the session until its 30-minute expiry; signing out clears it. Browser scripts can access this token. The backend validates tenant membership and grants on every request; configuration and browser claims do not grant permissions.
 
 For a live connection, an operator must first deploy the reviewed backend migrations and enable NTM in the intended approved environment. Initial administrators use the existing secure `--bootstrap-admin --tenant NTM` console; other accounts use the existing authenticated administrator-management endpoints. This frontend does not provide public account registration or apply migrations.
 
@@ -34,7 +34,7 @@ For a live connection, an operator must first deploy the reviewed backend migrat
 - `/businesses/new`, `/businesses/:id`: business profile, operations, needs/funding and assessment metadata. Available-owner selection is searched and paginated on the server. Veterans with an existing business open that business; racing duplicate assignments show HTTP 409 and keep unsaved form values.
 - `/administrators`: tenant-scoped account search/pagination, creation, email editing, activation/deactivation and password resets. Only TenantAdmin is assigned. Backend permissions remain authoritative; internal NTM access does not imply account-management access.
 
-Original membership references and workbook status/employee/years/funding descriptions are displayed separately from validated values. Existing source values are read-only and explicitly retained verbatim in full PUT requests, including null, zero, false and calendar dates. New records can include original source descriptions without inferring typed values. No import/export, veteran accounts, history tables, deletes, notifications or extra workflows are introduced.
+Original business workbook values remain in the database and are excluded from administrator forms and API responses. Business updates preserve this historical metadata. No import/export, veteran accounts, history tables, deletes, notifications or extra workflows are introduced.
 
 ## Checks
 

@@ -37,11 +37,6 @@ export const BUSINESS_FIELDS = [
   "additionalComments",
   "assessmentDate",
   "assessedBy",
-  "sourceRecordNumber",
-  "operationalStatusSource",
-  "numberOfEmployeesSource",
-  "yearsInOperationSource",
-  "fundingRequiredSource",
 ] as const satisfies readonly (keyof BusinessWrite)[];
 export function pick<T extends object>(
   value: T,

@@ -24,8 +24,7 @@ import { Field, FieldSpec, IssueBox, Pager } from "../shared/ui";
         <a class="breadcrumb-link" routerLink="/businesses">← Businesses</a>
         <h1>{{ id ? "Business & needs assessment" : "Add business" }}</h1>
         <p>
-          Keep the current assessment and original workbook information
-          together.
+          Keep the business profile and needs assessment up to date.
         </p>
       </div>
     </div>
@@ -136,8 +135,7 @@ import { Field, FieldSpec, IssueBox, Pager } from "../shared/ui";
         novalidate
         [attr.aria-busy]="saving()"
       >
-        <div class="assessment-layout">
-          <div>
+        <div>
             <section class="panel">
               <div class="panel-title">
                 <h2>Business profile</h2>
@@ -230,32 +228,6 @@ import { Field, FieldSpec, IssueBox, Pager } from "../shared/ui";
                 }
               </div>
             </section>
-          </div>
-          <aside>
-            <section class="panel source-panel">
-              <div class="panel-title">
-                <h2>Original workbook values</h2>
-                <span class="badge badge-neutral">Source text</span>
-              </div>
-              <p class="text-secondary">
-                Original descriptions are retained separately. They do not
-                automatically change the validated values.
-              </p>
-              <div class="source-fields">
-                @for (field of sourceFields; track field.key) {
-                  <ntm-field [form]="form" [field]="field" [readonly]="!!id" />
-                }
-              </div>
-            </section>
-            <section class="panel guidance">
-              <h2>Assessment notes</h2>
-              <p>
-                Keep employee qualifiers, uncertain funding entries and other
-                original descriptions intact. Record confirmed values in the
-                main form. Blank means unknown.
-              </p>
-            </section>
-          </aside>
         </div>
         <div class="sticky-actions">
           <a class="btn btn-sm btn-outline-secondary" routerLink="/businesses"
@@ -313,11 +285,6 @@ export class BusinessForm {
     additionalComments: [null as string | null],
     assessmentDate: [null as string | null, calendarDate],
     assessedBy: [null as string | null, maxText(200)],
-    sourceRecordNumber: [null as number | null, numeric(2147483647, 0, 1)],
-    operationalStatusSource: [null as string | null],
-    numberOfEmployeesSource: [null as string | null],
-    yearsInOperationSource: [null as string | null],
-    fundingRequiredSource: [null as string | null],
   });
   readonly profile: FieldSpec[] = [
     {
@@ -388,35 +355,6 @@ export class BusinessForm {
       label: "Additional comments / notes",
       type: "textarea",
       wide: true,
-    },
-  ];
-  readonly sourceFields: FieldSpec[] = [
-    {
-      key: "sourceRecordNumber",
-      label: "Workbook record number",
-      type: "number",
-      step: "1",
-      min: "1",
-    },
-    {
-      key: "operationalStatusSource",
-      label: "Original operational status",
-      type: "textarea",
-    },
-    {
-      key: "numberOfEmployeesSource",
-      label: "Original employee count / description",
-      type: "textarea",
-    },
-    {
-      key: "yearsInOperationSource",
-      label: "Original years / description",
-      type: "textarea",
-    },
-    {
-      key: "fundingRequiredSource",
-      label: "Original funding-required entry",
-      type: "textarea",
     },
   ];
   constructor() {
@@ -490,21 +428,11 @@ export class BusinessForm {
     this.saving.set(true);
     this.issue.set(null);
     const values = this.form.getRawValue();
-    const original = this.record();
     const body: BusinessWrite = {
       ...values,
       veteranId: values.veteranId!,
       businessName: values.businessName!,
       operationalStatus: values.operationalStatus ?? null,
-      ...(original
-        ? {
-            sourceRecordNumber: original.sourceRecordNumber,
-            operationalStatusSource: original.operationalStatusSource,
-            numberOfEmployeesSource: original.numberOfEmployeesSource,
-            yearsInOperationSource: original.yearsInOperationSource,
-            fundingRequiredSource: original.fundingRequiredSource,
-          }
-        : {}),
     };
     (this.id
       ? this.api.updateBusiness(this.id, body)

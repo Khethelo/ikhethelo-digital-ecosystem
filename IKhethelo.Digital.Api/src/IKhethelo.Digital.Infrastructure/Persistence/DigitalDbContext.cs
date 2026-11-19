@@ -12,12 +12,16 @@ public sealed class DigitalDbContext(DbContextOptions<DigitalDbContext> options)
     public DbSet<Member> Members => Set<Member>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<MembershipCategory> MembershipCategories => Set<MembershipCategory>();
+    public DbSet<NtmVeteran> NtmVeterans => Set<NtmVeteran>();
+    public DbSet<NtmBusiness> NtmBusinesses => Set<NtmBusiness>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
         configurationBuilder.Conventions.Remove(typeof(Microsoft.EntityFrameworkCore.Metadata.Conventions.ForeignKeyIndexConvention));
 
     protected override void OnModelCreating(ModelBuilder model)
     {
+        model.ApplyConfiguration(new NtmVeteranConfiguration());
+        model.ApplyConfiguration(new NtmBusinessConfiguration());
         model.HasSequence<long>("member_number_seq").StartsAt(1).IncrementsBy(1).HasMin(1);
         var tenant = Table<Tenant>(model, "tenants");
         Text(tenant, "Code", "code", 50); Text(tenant, "Name", "name", 200);

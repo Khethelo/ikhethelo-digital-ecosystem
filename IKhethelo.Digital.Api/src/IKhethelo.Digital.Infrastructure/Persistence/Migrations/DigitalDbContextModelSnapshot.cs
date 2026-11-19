@@ -465,6 +465,245 @@ namespace IKhethelo.Digital.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("IKhethelo.Digital.Domain.NtmBusiness", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AdditionalComments")
+                        .HasColumnType("text")
+                        .HasColumnName("additional_comments");
+
+                    b.Property<string>("AssessedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("assessed_by");
+
+                    b.Property<DateOnly?>("AssessmentDate")
+                        .HasColumnType("date")
+                        .HasColumnName("assessment_date");
+
+                    b.Property<string>("BusinessAddress")
+                        .HasColumnType("text")
+                        .HasColumnName("business_address");
+
+                    b.Property<string>("BusinessBackground")
+                        .HasColumnType("text")
+                        .HasColumnName("business_background");
+
+                    b.Property<string>("BusinessName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("business_name");
+
+                    b.Property<string>("CipcRegistrationNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("cipc_registration_number");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("CurrentBusinessNeeds")
+                        .HasColumnType("text")
+                        .HasColumnName("current_business_needs");
+
+                    b.Property<decimal?>("FundingAmount")
+                        .HasPrecision(15, 2)
+                        .HasColumnType("numeric(15,2)")
+                        .HasColumnName("funding_amount");
+
+                    b.Property<bool?>("FundingRequired")
+                        .HasColumnType("boolean")
+                        .HasColumnName("funding_required");
+
+                    b.Property<string>("FundingRequiredSource")
+                        .HasColumnType("text")
+                        .HasColumnName("funding_required_source");
+
+                    b.Property<int?>("NumberOfEmployees")
+                        .HasColumnType("integer")
+                        .HasColumnName("number_of_employees");
+
+                    b.Property<string>("NumberOfEmployeesSource")
+                        .HasColumnType("text")
+                        .HasColumnName("number_of_employees_source");
+
+                    b.Property<string>("OperationalStatus")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("operational_status");
+
+                    b.Property<string>("OperationalStatusSource")
+                        .HasColumnType("text")
+                        .HasColumnName("operational_status_source");
+
+                    b.Property<string>("PriorityNeed")
+                        .HasColumnType("text")
+                        .HasColumnName("priority_need");
+
+                    b.Property<string>("Sector")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("sector");
+
+                    b.Property<int?>("SourceRecordNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("source_record_number");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<Guid>("VeteranId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("veteran_id");
+
+                    b.Property<decimal?>("YearsInOperation")
+                        .HasPrecision(6, 1)
+                        .HasColumnType("numeric(6,1)")
+                        .HasColumnName("years_in_operation");
+
+                    b.Property<string>("YearsInOperationSource")
+                        .HasColumnType("text")
+                        .HasColumnName("years_in_operation_source");
+
+                    b.HasKey("Id")
+                        .HasName("ntm_businesses_pkey");
+
+                    b.HasIndex("TenantId", "AssessmentDate")
+                        .HasDatabaseName("ix_ntm_businesses_tenant_assessment_date");
+
+                    b.HasIndex("TenantId", "BusinessName")
+                        .HasDatabaseName("ix_ntm_businesses_tenant_name");
+
+                    b.HasIndex("TenantId", "OperationalStatus")
+                        .HasDatabaseName("ix_ntm_businesses_tenant_status");
+
+                    b.HasIndex("TenantId", "Sector")
+                        .HasDatabaseName("ix_ntm_businesses_tenant_sector");
+
+                    b.HasIndex("TenantId", "VeteranId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_ntm_businesses_tenant_veteran");
+
+                    b.ToTable("ntm_businesses", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_ntm_businesses_employees", "number_of_employees >= 0");
+
+                            t.HasCheckConstraint("ck_ntm_businesses_funding", "funding_amount >= 0");
+
+                            t.HasCheckConstraint("ck_ntm_businesses_name", "btrim(business_name) <> ''");
+
+                            t.HasCheckConstraint("ck_ntm_businesses_source_record", "source_record_number > 0");
+
+                            t.HasCheckConstraint("ck_ntm_businesses_status", "operational_status IN ('Operational', 'Partially Operational', 'Not Operational')");
+
+                            t.HasCheckConstraint("ck_ntm_businesses_years", "years_in_operation >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("IKhethelo.Digital.Domain.NtmVeteran", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContactNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("contact_number");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("DmvNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("dmv_number");
+
+                    b.Property<string>("EmailAddress")
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("email_address");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MembershipReference")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("membership_reference");
+
+                    b.Property<string>("MkmvaNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("mkmva_number");
+
+                    b.Property<string>("NormalizedDmvNumber")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("normalized_dmv_number")
+                        .HasComputedColumnSql("nullif(upper(btrim(dmv_number)), '')", true);
+
+                    b.Property<string>("NormalizedMkmvaNumber")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("normalized_mkmva_number")
+                        .HasComputedColumnSql("nullif(upper(btrim(mkmva_number)), '')", true);
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.HasKey("Id")
+                        .HasName("ntm_veterans_pkey");
+
+                    b.HasAlternateKey("TenantId", "Id")
+                        .HasName("uq_ntm_veterans_tenant_id");
+
+                    b.HasIndex("TenantId", "FullName")
+                        .HasDatabaseName("ix_ntm_veterans_tenant_name");
+
+                    b.HasIndex("TenantId", "NormalizedDmvNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ux_ntm_veterans_tenant_dmv")
+                        .HasFilter("normalized_dmv_number IS NOT NULL");
+
+                    b.HasIndex("TenantId", "NormalizedMkmvaNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ux_ntm_veterans_tenant_mkmva")
+                        .HasFilter("normalized_mkmva_number IS NOT NULL");
+
+                    b.ToTable("ntm_veterans", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_ntm_veterans_name", "btrim(full_name) <> ''");
+
+                            t.HasCheckConstraint("ck_ntm_veterans_registration", "nullif(btrim(mkmva_number), '') IS NOT NULL OR nullif(btrim(dmv_number), '') IS NOT NULL");
+                        });
+                });
+
             modelBuilder.Entity("IKhethelo.Digital.Domain.Tenant", b =>
                 {
                     b.Property<Guid>("Id")
@@ -600,6 +839,45 @@ namespace IKhethelo.Digital.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_membership_categories_tenant");
+                });
+
+            modelBuilder.Entity("IKhethelo.Digital.Domain.NtmBusiness", b =>
+                {
+                    b.HasOne("IKhethelo.Digital.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ntm_businesses_tenant");
+
+                    b.HasOne("IKhethelo.Digital.Domain.NtmVeteran", "Veteran")
+                        .WithOne("Business")
+                        .HasForeignKey("IKhethelo.Digital.Domain.NtmBusiness", "TenantId", "VeteranId")
+                        .HasPrincipalKey("IKhethelo.Digital.Domain.NtmVeteran", "TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ntm_businesses_veteran_tenant");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("Veteran");
+                });
+
+            modelBuilder.Entity("IKhethelo.Digital.Domain.NtmVeteran", b =>
+                {
+                    b.HasOne("IKhethelo.Digital.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ntm_veterans_tenant");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("IKhethelo.Digital.Domain.NtmVeteran", b =>
+                {
+                    b.Navigation("Business");
                 });
 #pragma warning restore 612, 618
         }

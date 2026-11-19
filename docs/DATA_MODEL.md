@@ -1,3 +1,7 @@
+# NTM GreenPulse extension (workbook verified, 12 November 2026)
+
+The NTM request authorizes two additional tenant-owned entities, `NtmVeteran` and `NtmBusiness`, using this same context/database and audit/administrator tables. See [NTM architecture and schema](NTM_MODULE.md) and [verified spreadsheet mapping](NTM_SPREADSHEET_FIELD_MAPPING.md). NtmWorkbookAlignment adds source-preserving fields and aligns SQL precision/indexes after workbook verification; ambiguous source records still require reconciliation before any import. Deployment remains an explicit operator action. Existing Es'hlahleni definitions and historical migrations below remain intact.
+
 # Current registration workflow (9 November 2026)
 
 Es'hlahleni is a cannabis-centred social club and hangout space: cannabis, edibles, cookies, PS5, good company and a place to relax. Preserve the existing badge, logo, colours and page layouts. No online payment, ordering, catalogue, inventory or invented commercial offerings.

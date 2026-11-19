@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
@@ -23,8 +24,13 @@ public sealed class ApiFactory(string connection, string key, string environment
         builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["ConnectionStrings:DefaultConnection"] = connection,
+            // Tests must not depend on local SMTP settings or send external mail.
+            ["Email:Enabled"] = "false",
             ["Jwt:Issuer"] = "ikd-tests", ["Jwt:Audience"] = "ikd-admin-tests", ["Jwt:PrivateKeyPem"] = key,
             ["Tenancy:Aliases:second"] = "SECOND", ["Tenancy:Aliases:inactive"] = "INACTIVE",
+            ["Tenancy:NtmTenantCodes:0"] = "ESHL", ["Tenancy:NtmTenantCodes:1"] = "SECOND",
+            [$"Tenancy:CrossTenantNtm:{internalAdmin ?? Guid.Empty}:0"] = "ESHL",
+            [$"Tenancy:CrossTenantNtm:{internalAdmin ?? Guid.Empty}:1"] = "SECOND",
             [$"Tenancy:CrossTenantMembership:{internalAdmin ?? Guid.Empty}:0"] = "ESHL",
             [$"Tenancy:CrossTenantMembership:{internalAdmin ?? Guid.Empty}:1"] = "SECOND",
             [$"Tenancy:AdminUserManagement:{(manageAdmins ? internalAdmin : null) ?? Guid.Empty}:0"] = "ESHL",
@@ -63,6 +69,13 @@ public sealed class ApiFixture : IAsyncLifetime
         await ExecuteAsync(adminConnection, $"CREATE DATABASE {baselineName}");
         await using (var db = Db()) await db.Database.MigrateAsync();
         await ExecuteAsync(BaselineConnection, await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "baseline.sql")));
+        // Keep the historical baseline authoritative for its existing tables, then compare the additive NTM schema too.
+        await using (var db = Db())
+        {
+            await ExecuteAsync(BaselineConnection, db.GetService<Microsoft.EntityFrameworkCore.Migrations.IHistoryRepository>().GetCreateIfNotExistsScript());
+            await ExecuteAsync(BaselineConnection, db.GetService<Microsoft.EntityFrameworkCore.Migrations.IMigrator>()
+                .GenerateScript(ExistingDatabaseAdoption.AdministrationMigration, ExistingDatabaseAdoption.NtmWorkbookMigration));
+        }
         await using (var db = Db())
         {
             var now = DateTimeOffset.UtcNow;

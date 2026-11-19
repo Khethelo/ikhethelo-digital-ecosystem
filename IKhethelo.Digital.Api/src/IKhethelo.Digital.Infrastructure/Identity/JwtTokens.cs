@@ -38,8 +38,8 @@ public sealed class JwtTokens(JwtSettings settings, JwtKeys keys, TimeProvider c
             new("jti", Guid.NewGuid().ToString()), new("iat", now.ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture), ClaimValueTypes.Integer64) };
         if (admin.TenantId is { } tenant) claims.Add(new("tenant_id", tenant.ToString()));
         claims.Add(new("security_version", admin.SecurityVersion.ToString(System.Globalization.CultureInfo.InvariantCulture)));
-        var token = new JwtSecurityToken(settings.Issuer, settings.Audience, claims, now.UtcDateTime, now.AddMinutes(15).UtcDateTime,
+        var token = new JwtSecurityToken(settings.Issuer, settings.Audience, claims, now.UtcDateTime, now.AddMinutes(30).UtcDateTime,
             new SigningCredentials(keys.Key, SecurityAlgorithms.RsaSha256));
-        return new(new JwtSecurityTokenHandler().WriteToken(token), "Bearer", 900);
+        return new(new JwtSecurityTokenHandler().WriteToken(token), "Bearer", 1800);
     }
 }

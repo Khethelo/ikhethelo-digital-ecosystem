@@ -42,7 +42,7 @@ public sealed class DatabaseAdoptionTests(ApiFixture fixture)
         // Repeating adoption verifies the schema again and does not duplicate history.
         await new ExistingDatabaseAdoption(db).ExecuteAsync(CancellationToken.None);
         await db.Database.MigrateAsync();
-        Assert.Equal(2, (await db.Database.GetAppliedMigrationsAsync()).Count());
+        Assert.Equal(4, (await db.Database.GetAppliedMigrationsAsync()).Count());
         var saved = await db.AdminUsers.SingleAsync(x => x.Id == admin); Assert.Equal("test-hash-to-preserve", saved.PasswordHash); Assert.Equal(0, saved.SecurityVersion);
         var savedMember = await db.Members.SingleAsync(x => x.Id == member); Assert.Equal("ESC-00420", savedMember.MemberNumber); Assert.Null(savedMember.CategoryId);
         Assert.False((await db.Tenants.SingleAsync(x => x.Id == fixture.Eshl)).IsActive);
@@ -56,7 +56,9 @@ public sealed class DatabaseAdoptionTests(ApiFixture fixture)
         await using var db = database.Db();
         await db.Database.ExecuteSqlRawAsync(await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "baseline.sql")));
         var result = await new ExistingDatabaseAdoption(db).ExecuteAsync(CancellationToken.None);
-        Assert.Contains("both migrations", result); Assert.Empty(await db.Database.GetPendingMigrationsAsync());
+        Assert.Contains("both migrations", result);
+        Assert.Equal(new[] { ExistingDatabaseAdoption.NtmMigration, ExistingDatabaseAdoption.NtmWorkbookMigration }, await db.Database.GetPendingMigrationsAsync());
+        await db.Database.MigrateAsync();
         var password = "Random-" + Guid.NewGuid().ToString("N");
         var id = await new BootstrapAdministrator(db, new PasswordHasher<AdminUser>(), TimeProvider.System)
             .ExecuteAsync("ESHL", "bootstrap@example.com", password, CancellationToken.None);
@@ -82,6 +84,41 @@ public sealed class DatabaseAdoptionTests(ApiFixture fixture)
         Assert.Equal(0, await db.Database.SqlQueryRaw<int>("SELECT count(*)::integer AS \"Value\" FROM pg_tables WHERE schemaname='public' AND tablename='__EFMigrationsHistory'").SingleAsync());
         Assert.True(await db.Tenants.AnyAsync(x => x.Id == fixture.Eshl));
         await AssertNoReferenceSchema(db);
+    }
+    [Fact]
+    public async Task NtmSchemaAdoptionVerifiesAllFourMigrationsAndPreservesTenantIdentity()
+    {
+        await using var database = await TestDatabase.CreateAsync(); await using var db = database.Db();
+        await db.Database.MigrateAsync();
+        var tenantId = await db.Tenants.Where(x => x.Code == "NTM").Select(x => x.Id).SingleAsync();
+        Assert.NotEqual(Guid.Empty, tenantId);
+        await db.Database.ExecuteSqlRawAsync("DROP TABLE \"__EFMigrationsHistory\"");
+        var result = await new ExistingDatabaseAdoption(db).ExecuteAsync(CancellationToken.None);
+        Assert.Contains("all four", result); Assert.Empty(await db.Database.GetPendingMigrationsAsync());
+        Assert.Equal(tenantId, await db.Tenants.Where(x => x.Code == "NTM").Select(x => x.Id).SingleAsync());
+        await AssertNoReferenceSchema(db);
+    }
+    [Fact]
+    public async Task WorkbookAlignmentRefusesNumericLossAndPreservesRecordsAfterExplicitCorrection()
+    {
+        await using var database = await TestDatabase.CreateAsync(); await using var db = database.Db();
+        await db.GetService<IMigrator>().MigrateAsync(ExistingDatabaseAdoption.NtmMigration);
+        var veteran = Guid.NewGuid(); var business = Guid.NewGuid();
+        await db.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO ntm_veterans(id,tenant_id,full_name,mkmva_number)
+            VALUES ({veteran},{fixture.Eshl},'Alignment test','ALIGNMENT-TEST');
+            INSERT INTO ntm_businesses(id,tenant_id,veteran_id,business_name,years_in_operation,funding_amount)
+            VALUES ({business},{fixture.Eshl},{veteran},'Alignment test',1.25,12.345);
+            """);
+        var failure = await Assert.ThrowsAsync<PostgresException>(() => db.Database.MigrateAsync());
+        Assert.Equal(PostgresErrorCodes.CheckViolation, failure.SqlState);
+        Assert.DoesNotContain(ExistingDatabaseAdoption.NtmWorkbookMigration, await db.Database.GetAppliedMigrationsAsync());
+        Assert.Equal(12.345m, await db.Database.SqlQuery<decimal>($"SELECT funding_amount AS \"Value\" FROM ntm_businesses WHERE id={business}").SingleAsync());
+        // Explicit reconciliation, not rounding in the migration.
+        await db.Database.ExecuteSqlInterpolatedAsync($"UPDATE ntm_businesses SET years_in_operation=1.2, funding_amount=12.34 WHERE id={business}");
+        await db.Database.MigrateAsync();
+        var row = await db.NtmBusinesses.SingleAsync(x => x.Id == business);
+        Assert.Equal(12.34m, row.FundingAmount); Assert.Equal(veteran, row.VeteranId); Assert.Null(row.NumberOfEmployeesSource);
     }
     [Fact]
     public async Task EmptyDatabaseIsNotStampedAsAnExistingBaseline()

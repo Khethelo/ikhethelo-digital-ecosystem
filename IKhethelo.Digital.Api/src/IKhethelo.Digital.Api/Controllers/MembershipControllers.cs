@@ -1,4 +1,5 @@
 using IKhethelo.Digital.Application;
+using IKhethelo.Digital.Api.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -21,7 +22,8 @@ public sealed class AuthenticationController(IAdministratorAuthentication authen
     public async Task<IActionResult> Login(LoginRequest request, CancellationToken ct)
     {
         Response.Headers.CacheControl = "no-store";
-        return Ok(await authentication.ExecuteAsync(request, ct));
+        var token = await authentication.ExecuteAsync(request, ct);
+        return token is null ? StatusCode(401, Problems.Create(HttpContext, 401, "Invalid credentials.")) : Ok(token);
     }
 }
 

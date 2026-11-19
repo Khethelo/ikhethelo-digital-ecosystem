@@ -316,14 +316,12 @@ test("linked veterans retain hidden source references when updated", async ({
   await page.getByRole("link", { name: "Open business", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/businesses/${b1}$`));
 });
-test("assessment updates retain source text, false, zero and date without coercion", async ({
+test("assessment updates omit source text and retain false, zero and date", async ({
   page,
 }) => {
   const state = await setup(page);
   await login(page, `/businesses/${b1}`);
-  await expect(
-    page.getByLabel("Original employee count / description"),
-  ).not.toBeEditable();
+  await expect(page.getByText("Original workbook values")).toHaveCount(0);
   await expect(
     page.getByLabel("Number of employees", { exact: true }),
   ).toHaveValue("");
@@ -335,10 +333,10 @@ test("assessment updates retain source text, false, zero and date without coerci
   const request = state.requests.find(
     (r) => r.method === "PUT" && r.path.endsWith(`/${b1}`),
   )!;
-  expect(request.body.numberOfEmployeesSource).toBe(" 3 part time\n");
-  expect(request.body.operationalStatusSource).toBe(" Operationl ");
-  expect(request.body.yearsInOperationSource).toBe("Needs training");
-  expect(request.body.fundingRequiredSource).toBe("Funding");
+  expect(request.body.numberOfEmployeesSource).toBeUndefined();
+  expect(request.body.operationalStatusSource).toBeUndefined();
+  expect(request.body.yearsInOperationSource).toBeUndefined();
+  expect(request.body.fundingRequiredSource).toBeUndefined();
   expect(request.body.fundingRequired).toBe(false);
   expect(request.body.fundingAmount).toBe(0);
   expect(request.body.assessmentDate).toBe("2026-10-13");

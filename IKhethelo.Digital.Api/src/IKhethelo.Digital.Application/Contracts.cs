@@ -45,7 +45,7 @@ public interface IMemberAdministration
     Task<MemberResponse> UpdateAsync(Guid id, MemberUpdate request, CancellationToken ct);
     Task<MemberResponse> StatusAsync(Guid id, MemberStatusUpdate request, CancellationToken ct);
 }
-public interface IAdministratorAuthentication { Task<TokenResponse> ExecuteAsync(LoginRequest request, CancellationToken ct); }
+public interface IAdministratorAuthentication { Task<TokenResponse?> ExecuteAsync(LoginRequest request, CancellationToken ct); }
 public interface ITokenIssuer { TokenResponse Issue(AdminUser admin); }
 
 public sealed class RequestFailure(int status, string message, Dictionary<string, string[]>? errors = null) : Exception(message)
