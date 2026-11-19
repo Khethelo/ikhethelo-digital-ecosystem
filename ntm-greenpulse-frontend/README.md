@@ -12,7 +12,7 @@ npm ci
 npm start
 ```
 
-Open `http://localhost:4300`. The development proxy uses `https://localhost:57972` by default. Set `NTM_API_TARGET` to a different **local** backend URL before starting Angular if necessary. Local certificate validation is relaxed only in that development proxy, never a production TLS setting.
+Open `http://localhost:4300`. The development proxy uses `https://localhost:57972` by default. Set `NTM_API_TARGET` before starting Angular to use another local backend or `https://ikhethelo-digital-api.onrender.com`. Certificate validation is relaxed for local targets only; HTTPS certificates are verified for Render. The Render target uses the configured remote database, so changes made during testing affect that database.
 
 `public/config.json` supplies the same-origin API base and canonical tenant code:
 
