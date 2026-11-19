@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: ntm-greenpulse-api
+    runtime: docker
+    plan: free
+    dockerContext: .
+    dockerfilePath: ./IKhethelo.Digital.Api/Dockerfile
+    envVars:
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+      - key: Jwt__Issuer
+        sync: false
+      - key: Jwt__Audience
+        sync: false
+      - key: Jwt__PrivateKeyPem
+        sync: false
+      - key: AllowedHosts
+        sync: false
+      - key: Tenancy__NtmTenantCodes__0
+        value: NTM
+      - key: Email__Enabled
+        value: "false"
+      - key: ReverseProxy__EdgeTerminatesTls
+        value: "true"

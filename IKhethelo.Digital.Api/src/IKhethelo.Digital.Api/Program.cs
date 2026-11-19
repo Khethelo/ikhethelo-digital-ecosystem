@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Net;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using IKhethelo.Digital.Api;
@@ -15,12 +16,28 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 var bootstrap = args.Contains("--bootstrap-admin", StringComparer.Ordinal);
 var adoptDatabase = args.Contains("--adopt-existing-database", StringComparer.Ordinal);
 var builder = WebApplication.CreateBuilder(args.Where(x => x is not ("--bootstrap-admin" or "--adopt-existing-database")).ToArray());
+var renderPort = builder.Configuration["PORT"];
+if (!string.IsNullOrEmpty(renderPort))
+{
+    if (!int.TryParse(renderPort, out var port) || port is < 1 or > 65535)
+        throw new InvalidOperationException("PORT must be a valid TCP port.");
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+}
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    foreach (var proxy in builder.Configuration.GetSection("ReverseProxy:KnownProxies").Get<string[]>() ?? [])
+        options.KnownProxies.Add(IPAddress.Parse(proxy));
+    foreach (var network in builder.Configuration.GetSection("ReverseProxy:KnownNetworks").Get<string[]>() ?? [])
+        options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(network));
+});
 builder.Logging.ClearProviders();
 // dotnet watch discovers listening URLs from console output. JSON log lines can
 // leave trailing JSON in the detected browser URL, so use plain logs locally.
@@ -156,9 +173,15 @@ if (bootstrap)
     await app.DisposeAsync(); return;
 }
 _ = app.Services.GetRequiredService<JwtKeys>();
+app.UseForwardedHeaders();
 app.UseMiddleware<ErrorMiddleware>();
 app.UseStatusCodePages(context => Problems.WriteAsync(context.HttpContext, context.HttpContext.Response.StatusCode));
-if (!app.Environment.IsDevelopment()) { app.UseHsts(); app.UseHttpsRedirection(); }
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+    // Only set this when the public edge enforces HTTPS and private HTTP access is controlled.
+    if (!builder.Configuration.GetValue<bool>("ReverseProxy:EdgeTerminatesTls")) app.UseHttpsRedirection();
+}
 app.UseRouting(); app.UseCors();
 app.UseAuthentication(); app.UseRateLimiter();
 app.UseMiddleware<TenantScopeMiddleware>(); app.UseAuthorization();
