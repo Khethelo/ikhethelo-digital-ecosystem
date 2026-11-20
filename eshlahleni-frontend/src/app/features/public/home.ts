@@ -36,8 +36,8 @@ import { clubContent } from '../../content/club-content';
       <div class="section-head"><div><span class="section-tag">MAKE YOURSELF AT HOME</span><h2 id="process-title">A few details.<br />Then come through.</h2></div><a class="text-link" routerLink="/membership">How membership works <span aria-hidden="true">↗</span></a></div>
       <div class="process-grid">
         <article class="process-step"><div class="step-top"><span>01 / REGISTER</span><span aria-hidden="true">↗</span></div><h3>Start right here.</h3><p>Share your details and consent online. We’ll save your registration and show your confirmation reference. No account needed.</p></article>
-        <article class="process-step"><div class="step-top"><span>02 / VISIT</span><span aria-hidden="true">↗</span></div><h3>Meet us at the club.</h3><p>Visit Es’hlahleni and complete the R100 membership step in person. Your online form is the first step.</p></article>
-        <article class="process-step"><div class="step-top"><span>03 / ACTIVATE</span><span aria-hidden="true">✓</span></div><h3>Welcome in.</h3><p>Staff activate your membership and issue your member number.</p></article>
+        <article class="process-step"><div class="step-top"><span>02 / REVIEW</span><span aria-hidden="true">↗</span></div><h3>We review your application.</h3><p>Club administrators review your application.</p></article>
+        <article class="process-step"><div class="step-top"><span>03 / MEMBERSHIP</span><span aria-hidden="true">✓</span></div><h3>Welcome in.</h3><p>Approved applicants become active members and receive a member number.</p></article>
       </div>
     </div></section>
 

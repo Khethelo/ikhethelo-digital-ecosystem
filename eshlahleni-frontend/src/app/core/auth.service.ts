@@ -19,6 +19,8 @@ export class AuthService {
   private expiryTimer?: ReturnType<typeof setTimeout>;
   private revision = 0;
   readonly authenticated = computed(() => this.token() !== null);
+  readonly role = signal<string | null>(null);
+  readonly actorId = signal<string | null>(null);
   readonly sessionMessage = signal('');
   constructor() { inject(DestroyRef).onDestroy(() => clearTimeout(this.expiryTimer)); }
 
@@ -31,6 +33,12 @@ export class AuthService {
       if (!response.accessToken || response.tokenType !== 'Bearer' || response.expiresIn !== 1800) throw new Error('Unexpected authentication response.');
       clearTimeout(this.expiryTimer);
       this.token.set(response.accessToken);
+      try {
+        const payload = response.accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        const claims = JSON.parse(atob(payload));
+        this.role.set(typeof claims.role === 'string' ? claims.role : null);
+        this.actorId.set(typeof claims.sub === 'string' ? claims.sub : null);
+      } catch { this.role.set(null); this.actorId.set(null); }
       this.expiresAt.set(Date.now() + response.expiresIn * 1000);
       this.sessionMessage.set('');
       this.expiryTimer = setTimeout(() => this.logout(true), response.expiresIn * 1000);
@@ -43,7 +51,7 @@ export class AuthService {
   logout(expired = false): void {
     ++this.revision;
     clearTimeout(this.expiryTimer);
-    this.token.set(null); this.expiresAt.set(0);
+    this.token.set(null); this.expiresAt.set(0); this.role.set(null); this.actorId.set(null);
     this.sessionMessage.set(expired ? 'Your session has ended. Please sign in again.' : 'You have signed out.');
     const current = this.router.url;
     const returnUrl = expired ? safeAdminReturnUrl(current) : '/admin';

@@ -40,7 +40,7 @@ paths:
         Resolve active tenant server-side. Require age 18+ for ESHL on the current
         Africa/Johannesburg date; DateOnly.AddYears(18) anniversary semantics.
         Normalize email/phone. Either awaiting-registration or Active-member normalized email OR phone collision
-        in this tenant returns generic 409. Create AwaitingInPersonCompletion and return only safe fields.
+        in this tenant returns generic 409. Create Pending and return only safe fields.
         No public application lookup is exposed; 201 does not imply a public GET URL.
         Registration and its audit commit before a registration-received email is attempted.
         Email failure is logged without changing the successful 201 registration result.
@@ -52,7 +52,7 @@ paths:
             schema: {$ref: '#/components/schemas/ApplicationSubmission'}
       responses:
         '201':
-          description: AwaitingInPersonCompletion application persisted
+          description: Pending application persisted
           content:
             application/json:
               schema: {$ref: '#/components/schemas/SubmissionReceipt'}
@@ -95,6 +95,23 @@ paths:
         '415': {$ref: '#/components/responses/UnsupportedMedia'}
         '422': {$ref: '#/components/responses/ValidationFailed'}
         '429': {$ref: '#/components/responses/RateLimited'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /api/v1/auth/password-policy:
+    get:
+      operationId: getPasswordPolicy
+      tags: [Authentication]
+      summary: Get the shared administrator password guidance
+      responses:
+        '200':
+          description: Current password guidance
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [guidance]
+                properties:
+                  guidance: {type: string}
+        '401': {$ref: '#/components/responses/Unauthorized'}
         '500': {$ref: '#/components/responses/ServerError'}
   /api/v1/auth/change-password:
     post:
@@ -165,11 +182,11 @@ paths:
     post:
       operationId: activateMembership
       tags: [Applications]
-      summary: Activate after the R100 membership step is completed in person
+      summary: Legacy endpoint for approving a pending application
       description: |
         Check tenant and active-member identity conflicts, allocate member_number_seq,
         format ESC-xxxxx for ESHL (minimum five digits), create Member, set review
-        metadata and write AuditLog in one transaction. Repeated/racing activation is 409. Email failure is logged and does not reverse activation.
+        metadata and write AuditLog in one transaction. Repeated/racing activation is 409. Email failure is logged and does not reverse approval.
       requestBody:
         required: true
         content:
@@ -255,8 +272,8 @@ paths:
     post:
       operationId: registerMember
       tags: [Members]
-      summary: Complete in-person membership registration with consent and a completed registration snapshot
-      description: Existing online registration must use activation instead. Confirm the R100 in-person step before using this endpoint. Member creation and audits commit together; activation email is attempted after commit.
+      summary: Create a member directly with consent and an application snapshot
+      description: Existing online applications must use approval instead. Member creation and audits commit together; a membership confirmation email is attempted after commit.
       requestBody:
         required: true
         content:
@@ -1736,8 +1753,8 @@ components:
       description: Canonical international E.164 representation; no spaces.
     ApplicationStatus:
       type: string
-      enum: [AwaitingInPersonCompletion, Completed, LegacyClosed]
-      description: LegacyClosed is read-only historical data. New registrations await in-person completion; activation marks them Completed.
+      enum: [Pending, Approved, Rejected, AwaitingInPersonCompletion, Completed, LegacyClosed]
+      description: ESHL uses Pending, Approved and Rejected. Other tenants retain AwaitingInPersonCompletion, Completed and LegacyClosed for compatibility.
     MemberStatus:
       type: string
       enum: [Active, Suspended, Inactive]
@@ -1763,9 +1780,9 @@ components:
       required: [applicationId, status, submittedAtUtc, message]
       properties:
         applicationId: {type: string, format: uuid}
-        status: {type: string, enum: [AwaitingInPersonCompletion]}
+        status: {type: string, enum: [Pending, AwaitingInPersonCompletion]}
         submittedAtUtc: {type: string, format: date-time}
-        message: {type: string, example: Your registration has been received.}
+        message: {type: string, example: Your application has been submitted and is pending review.}
     LoginRequest:
       type: object
       additionalProperties: false

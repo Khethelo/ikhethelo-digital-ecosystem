@@ -143,7 +143,7 @@ public sealed class ContractAndPersistenceTests(ApiFixture fixture)
             Assert.Equal(HttpStatusCode.InternalServerError, (await client.PostAsJsonAsync(path + "/activate", new { })).StatusCode);
             Assert.Equal(HttpStatusCode.InternalServerError, (await client.GetAsync(path)).StatusCode);
             await using var db = fixture.Db(); var row = await db.Applications.SingleAsync(x => x.Id == id);
-            Assert.Equal(MembershipApplicationStatus.AwaitingInPersonCompletion, row.Status); Assert.Null(row.ReviewedAtUtc); Assert.Null(row.ReviewedByAdminId);
+            Assert.Equal(MembershipApplicationStatus.Pending, row.Status); Assert.Null(row.ReviewedAtUtc); Assert.Null(row.ReviewedByAdminId);
             Assert.False(await db.Members.AnyAsync(x => x.ApplicationId == id));
             Assert.False(await db.AuditLogs.AnyAsync(x => x.EntityId == id && x.Action != "RegistrationCreated"));
             Assert.Single(await db.AuditLogs.Where(x => x.EntityId == id && x.Action == "RegistrationCreated").ToListAsync());

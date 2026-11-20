@@ -41,6 +41,30 @@ public sealed class IntegrationTests(ApiFixture fixture)
     private static async Task<JsonElement> JsonAsync(HttpResponseMessage response) => JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.Clone();
 
     [Fact]
+    public async Task PasswordPolicyGuidanceRequiresAuthenticationAndMatchesValidation()
+    {
+        Assert.Equal(HttpStatusCode.Unauthorized, (await fixture.Client.GetAsync("/api/v1/auth/password-policy")).StatusCode);
+        using var client = await AuthAsync();
+        var response = await client.GetAsync("/api/v1/auth/password-policy");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(AdministratorValidation.PasswordGuidance, (await JsonAsync(response)).GetProperty("guidance").GetString());
+    }
+
+    [Fact]
+    public async Task OtherTenantsRetainExistingStatusWireNamesAndFilters()
+    {
+        var submission = Submission();
+        var response = await fixture.Client.PostAsJsonAsync("/api/v1/public/second/membership-applications", submission);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var receipt = await JsonAsync(response);
+        Assert.Equal("AwaitingInPersonCompletion", receipt.GetProperty("status").GetString());
+        using var client = await AuthAsync("second@example.com");
+        var filtered = await client.GetAsync("/api/v1/admin/tenants/second/membership-applications?status=AwaitingInPersonCompletion&search=" + Uri.EscapeDataString(submission.Email!));
+        Assert.Equal(HttpStatusCode.OK, filtered.StatusCode);
+        Assert.Equal("AwaitingInPersonCompletion", (await JsonAsync(filtered)).GetProperty("items")[0].GetProperty("status").GetString());
+    }
+
+    [Fact]
     public async Task DeclineIsTenantScopedAndDoesNotCreateMember()
     {
         var id = await SubmitAsync(); using var client = await AuthAsync();
@@ -51,7 +75,7 @@ public sealed class IntegrationTests(ApiFixture fixture)
         Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync(path + "/decline", new { })).StatusCode);
         await using var db = fixture.Db();
         var application = await db.Applications.SingleAsync(x => x.Id == id);
-        Assert.Equal(MembershipApplicationStatus.LegacyClosed, application.Status);
+        Assert.Equal(MembershipApplicationStatus.Rejected, application.Status);
         Assert.Equal(fixture.TenantAdminId, application.ReviewedByAdminId);
         Assert.NotNull(application.ReviewedAtUtc);
         Assert.False(await db.Members.AnyAsync(x => x.ApplicationId == id));
@@ -80,7 +104,7 @@ public sealed class IntegrationTests(ApiFixture fixture)
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync(Admin + "/members")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync($"{Admin}/membership-applications/{id}/activate", new { })).StatusCode);
         await using var db = fixture.Db();
-        Assert.Equal(MembershipApplicationStatus.AwaitingInPersonCompletion, (await db.Applications.SingleAsync(x => x.Id == id)).Status);
+        Assert.Equal(MembershipApplicationStatus.Pending, (await db.Applications.SingleAsync(x => x.Id == id)).Status);
     }
 
     [Fact]
@@ -91,7 +115,7 @@ public sealed class IntegrationTests(ApiFixture fixture)
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var receipt = await JsonAsync(response);
         Assert.Equal(new[] { "applicationId", "message", "status", "submittedAtUtc" }, receipt.EnumerateObject().Select(x => x.Name).Order().ToArray());
-        Assert.Equal("AwaitingInPersonCompletion", receipt.GetProperty("status").GetString());
+        Assert.Equal("Pending", receipt.GetProperty("status").GetString());
         await using var db = fixture.Db();
         var row = await db.Applications.SingleAsync(x => x.Id == receipt.GetProperty("applicationId").GetGuid());
         Assert.Equal(fixture.Eshl, row.TenantId); Assert.Equal("Alice", row.FirstName);
@@ -153,7 +177,7 @@ public sealed class IntegrationTests(ApiFixture fixture)
         Assert.Matches("^ESC-[0-9]{5,}$", member.GetProperty("memberNumber").GetString()!);
         Assert.Equal("Active", member.GetProperty("status").GetString()); Assert.False(member.TryGetProperty("tenantId", out _));
         await using var db = fixture.Db(); var application = await db.Applications.SingleAsync(x => x.Id == id);
-        Assert.Equal(MembershipApplicationStatus.Completed, application.Status); Assert.NotNull(application.ReviewedAtUtc);
+        Assert.Equal(MembershipApplicationStatus.Approved, application.Status); Assert.NotNull(application.ReviewedAtUtc);
         Assert.Contains(application.ReviewedByAdminId!.Value, new[] { fixture.TenantAdminId, fixture.InternalAdminId });
         Assert.Equal(1, await db.Members.CountAsync(x => x.ApplicationId == id));
         Assert.Equal(1, await db.AuditLogs.CountAsync(x => x.EntityId == id && x.Action == "MembershipActivated"));
@@ -177,7 +201,7 @@ public sealed class IntegrationTests(ApiFixture fixture)
             client.PostAsJsonAsync($"{Admin}/membership-applications/{id}/activate", new { }));
         Assert.Single(responses, x => x.StatusCode == HttpStatusCode.OK); Assert.Single(responses, x => x.StatusCode == HttpStatusCode.Conflict);
         await using var db = fixture.Db(); var application = await db.Applications.SingleAsync(x => x.Id == id);
-        Assert.Equal(application.Status == MembershipApplicationStatus.Completed ? 1 : 0, await db.Members.CountAsync(x => x.ApplicationId == id));
+        Assert.Equal(application.Status == MembershipApplicationStatus.Approved ? 1 : 0, await db.Members.CountAsync(x => x.ApplicationId == id));
     }
     [Fact]
     public async Task TenantAdminCannotReadReviewEditOrDeleteOtherTenantResources()

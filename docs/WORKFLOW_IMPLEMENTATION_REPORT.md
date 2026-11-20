@@ -1,4 +1,6 @@
-# Registration workflow implementation verification
+# Historical registration workflow implementation verification
+
+This report describes the superseded in-person workflow. The current approval workflow is documented in [ESHL_ADMIN_REVIEW.md](ESHL_ADMIN_REVIEW.md).
 
 Implemented in the existing backend and Angular application on 10 November 2026 (Africa/Johannesburg).
 

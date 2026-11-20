@@ -9,7 +9,7 @@ export const clubContent = {
   rules: [
     { title: '18+', text: 'You must be at least 18 to register.' },
     { title: 'Register online.', text: 'Share your details and consent to start your registration.' },
-    { title: 'Come through.', text: 'Visit the club and complete the R100 membership step in person.' },
-    { title: 'Welcome in.', text: 'Staff activate your membership and issue your member number after in-person completion.' },
+    { title: 'Under review.', text: 'An administrator reviews your application.' },
+    { title: 'Welcome in.', text: 'Accepted applicants receive a membership number.' },
   ],
 } as const;

@@ -1,5 +1,5 @@
 /** Explicit client DTOs aligned with contracts/ikhethelo-digital-api.openapi.yaml v1.1.0. */
-export type ApplicationStatus = 'AwaitingInPersonCompletion' | 'Completed' | 'LegacyClosed';
+export type ApplicationStatus = 'Pending' | 'Approved' | 'Rejected';
 export type MemberStatus = 'Active' | 'Suspended' | 'Inactive';
 export interface ContactDetails {
   firstName: string;
@@ -14,7 +14,7 @@ export interface ApplicationSubmission extends ContactDetails {
 }
 export interface SubmissionReceipt {
   applicationId: string;
-  status: 'AwaitingInPersonCompletion';
+  status: 'Pending';
   submittedAtUtc: string;
   message: string;
 }
@@ -43,5 +43,5 @@ export interface ProblemDetails {
   traceId?: string;
   errors?: Record<string, string[]>;
 }
-export const applicationStatuses: ApplicationStatus[] = ['AwaitingInPersonCompletion', 'Completed', 'LegacyClosed'];
+export const applicationStatuses: ApplicationStatus[] = ['Pending', 'Approved', 'Rejected'];
 export const memberStatuses: MemberStatus[] = ['Active', 'Suspended', 'Inactive'];

@@ -12,7 +12,7 @@ public sealed class SubmitMembershipApplication(DigitalDbContext db, TenantData 
     {
         Validation.Submission(request, Validation.LocalDate(clock), rules.For(data.Access.TenantCode).RequireAdult);
         var email = request.Email!.Trim(); var normalized = Validation.NormalizeEmail(email);
-        if (await data.Applications.AnyAsync(x => x.Status == MembershipApplicationStatus.AwaitingInPersonCompletion &&
+        if (await data.Applications.AnyAsync(x => x.Status == MembershipApplicationStatus.Pending &&
                 (x.NormalizedEmail == normalized || x.NormalizedPhoneNumber == request.PhoneNumber), ct)) throw RequestFailure.Conflict();
         if (await data.Members.AnyAsync(x => x.Status == MemberStatus.Active && (x.NormalizedEmail == normalized || x.NormalizedPhoneNumber == request.PhoneNumber), ct)) throw RequestFailure.Conflict();
         var now = clock.GetUtcNow();
@@ -21,12 +21,12 @@ public sealed class SubmitMembershipApplication(DigitalDbContext db, TenantData 
             Id = Guid.NewGuid(), TenantId = data.Access.TenantId, FirstName = request.FirstName!.Trim(), LastName = request.LastName!.Trim(),
             DateOfBirth = request.DateOfBirth!.Value, PhoneNumber = request.PhoneNumber!, NormalizedPhoneNumber = request.PhoneNumber!,
             Email = email, NormalizedEmail = normalized, TermsAccepted = true, PrivacyConsent = true,
-            Status = MembershipApplicationStatus.AwaitingInPersonCompletion, SubmittedAtUtc = now, UpdatedAtUtc = now
+            Status = MembershipApplicationStatus.Pending, SubmittedAtUtc = now, UpdatedAtUtc = now
         };
         db.Applications.Add(application);
         audit.Add("RegistrationCreated", "MembershipApplication", application.Id);
         await db.SaveChangesAsync(ct);
         await emails.ReceivedAsync(application.Email, application.FirstName, application.Id, application.SubmittedAtUtc);
-        return new(application.Id, application.Status, application.SubmittedAtUtc, "Your registration has been received.");
+        return new(application.Id, application.Status, application.SubmittedAtUtc, "Your application has been submitted and is pending review.");
     }
 }

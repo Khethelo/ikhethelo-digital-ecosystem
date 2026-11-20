@@ -1,6 +1,6 @@
 namespace IKhethelo.Digital.Domain;
 
-public enum MembershipApplicationStatus { AwaitingInPersonCompletion, Completed, LegacyClosed }
+public enum MembershipApplicationStatus { Pending, Approved, Rejected }
 public enum MemberStatus { Active, Suspended, Inactive }
 public enum AdminRole { TenantAdmin = 0, IKhetheloAdmin = 1, TenantStaff = 2 }
 

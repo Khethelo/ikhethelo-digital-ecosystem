@@ -29,7 +29,7 @@ public sealed class MemberOperations(DigitalDbContext db, TenantData data, Audit
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         var category = await AvailableCategoryAsync(request.CategoryId, ct);
         var email = request.Email!.Trim(); var normalized = Validation.NormalizeEmail(email);
-        if (await data.Applications.AnyAsync(x => x.Status == MembershipApplicationStatus.AwaitingInPersonCompletion &&
+        if (await data.Applications.AnyAsync(x => x.Status == MembershipApplicationStatus.Pending &&
             (x.NormalizedEmail == normalized || x.NormalizedPhoneNumber == request.PhoneNumber), ct) ||
             await data.Members.AnyAsync(x => x.Status == MemberStatus.Active &&
             (x.NormalizedEmail == normalized || x.NormalizedPhoneNumber == request.PhoneNumber), ct)) throw RequestFailure.Conflict();
@@ -37,7 +37,7 @@ public sealed class MemberOperations(DigitalDbContext db, TenantData data, Audit
         var application = new MembershipApplication { Id = Guid.NewGuid(), TenantId = data.Access.TenantId,
             FirstName = request.FirstName!.Trim(), LastName = request.LastName!.Trim(), DateOfBirth = request.DateOfBirth!.Value,
             PhoneNumber = request.PhoneNumber!, NormalizedPhoneNumber = request.PhoneNumber!, Email = email, NormalizedEmail = normalized,
-            TermsAccepted = true, PrivacyConsent = true, Status = MembershipApplicationStatus.Completed,
+            TermsAccepted = true, PrivacyConsent = true, Status = MembershipApplicationStatus.Approved,
             SubmittedAtUtc = now, UpdatedAtUtc = now, ReviewedAtUtc = now, ReviewedByAdminId = actor,
             ReviewNotes = "Registered directly by an authorized administrator." };
         var number = await db.Database.SqlQueryRaw<long>("SELECT nextval('member_number_seq') AS \"Value\"").SingleAsync(ct);

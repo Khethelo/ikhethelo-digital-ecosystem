@@ -60,6 +60,22 @@ public sealed class AdministrationTests(ApiFixture fixture)
         Assert.Equal(HttpStatusCode.OK, (await staff.GetAsync("/api/v1/admin/tenants/ESHL/ntm/dashboard")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await staff.GetAsync("/api/v1/admin/tenants/ESHL/membership-applications")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await staff.GetAsync("/api/v1/admin/tenants/SECOND/membership-applications")).StatusCode);
+        var request = Member();
+        var submitted = await fixture.Client.PostAsJsonAsync("/api/v1/public/eshlahleni/membership-applications",
+            new ApplicationSubmission(request.FirstName, request.LastName, request.DateOfBirth, request.PhoneNumber, request.Email, true, true));
+        Assert.Equal(HttpStatusCode.Created, submitted.StatusCode);
+        var applicationId = (await Json(submitted)).GetProperty("applicationId").GetGuid();
+        var decision = await staff.PostAsJsonAsync($"{Tenant}/membership-applications/{applicationId}/approve", new { });
+        Assert.Equal(HttpStatusCode.OK, decision.StatusCode);
+        Assert.False((await Json(decision)).GetProperty("confirmationEmailSent").GetBoolean());
+        Assert.Equal(HttpStatusCode.Conflict, (await staff.PostAsJsonAsync($"{Tenant}/membership-applications/{applicationId}/decline", new { })).StatusCode);
+        var another = Member();
+        var secondSubmission = await fixture.Client.PostAsJsonAsync("/api/v1/public/eshlahleni/membership-applications",
+            new ApplicationSubmission(another.FirstName, another.LastName, another.DateOfBirth, another.PhoneNumber, another.Email, true, true));
+        Assert.Equal(HttpStatusCode.Created, secondSubmission.StatusCode);
+        var secondId = (await Json(secondSubmission)).GetProperty("applicationId").GetGuid();
+        Assert.Equal(HttpStatusCode.OK, (await staff.PostAsJsonAsync($"{Tenant}/membership-applications/{secondId}/decline", new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await staff.PostAsJsonAsync($"{Tenant}/membership-applications/{secondId}/approve", new { })).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await staff.GetAsync("/api/v1/admin-users")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await staff.PostAsJsonAsync("/api/v1/admin-users", new { email = Email(), password = Password(), role = "TenantStaff" })).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await staff.PostAsJsonAsync($"/api/v1/admin-users/{fixture.TenantAdminId}/reset-password", new { newPassword = Password() })).StatusCode);
@@ -261,7 +277,7 @@ public sealed class AdministrationTests(ApiFixture fixture)
         Assert.Equal("Active", change.GetProperty("previousStatus").GetString()); Assert.Equal("Suspended", change.GetProperty("status").GetString());
         Assert.Contains(events, x => x.GetProperty("action").GetString() == "SetMemberCategory");
         await using var db = fixture.Db(); var application = await db.Applications.SingleAsync(x => x.Id == member.GetProperty("applicationId").GetGuid());
-        Assert.Equal(MembershipApplicationStatus.Completed, application.Status); Assert.Equal(fixture.TenantAdminId, application.ReviewedByAdminId);
+        Assert.Equal(MembershipApplicationStatus.Approved, application.Status); Assert.Equal(fixture.TenantAdminId, application.ReviewedByAdminId);
     }
     [Fact]
     public async Task CategoriesAndHistoryCannotCrossTenantsAndInactiveCategoriesCannotBeAssigned()

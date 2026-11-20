@@ -42,16 +42,16 @@ public interface IMemberOperations
 
 public static class AdministratorValidation
 {
+    public const string PasswordGuidance = "Use 8 to 128 characters, including an ASCII digit and a special character (not a letter, number, or whitespace).";
     public static void Email(string? email) => Validation.Login(new(email, "validation-only"));
     public static void Password(string? password)
     {
-        const string message = "Use 8 to 128 characters, including an ASCII digit and a special character (not a letter, number, or whitespace).";
         if (password is null || password.EnumerateRunes().Count() is < 8 or > 128 ||
             !password.Any(c => c is >= '0' and <= '9') ||
             !password.EnumerateRunes().Any(r => !System.Text.Rune.IsLetter(r) &&
                 System.Text.Rune.GetUnicodeCategory(r) is not (System.Globalization.UnicodeCategory.DecimalDigitNumber or System.Globalization.UnicodeCategory.LetterNumber or System.Globalization.UnicodeCategory.OtherNumber) &&
                 !System.Text.Rune.IsWhiteSpace(r)))
-            throw new RequestFailure(422, message, new() { ["password"] = [message] });
+            throw new RequestFailure(422, PasswordGuidance, new() { ["password"] = [PasswordGuidance] });
     }
     public static void Role(string? role)
     {

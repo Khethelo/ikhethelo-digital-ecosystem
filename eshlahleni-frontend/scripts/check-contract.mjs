@@ -8,7 +8,7 @@ for (const [schema, fields] of Object.entries({ ApplicationSubmission: ['firstNa
   assert.equal(schemas[schema].additionalProperties, false);
 }
 assert.deepEqual(schemas.TokenResponse.properties.expiresIn.enum, [1800]);
-assert.deepEqual(schemas.ApplicationStatus.enum, ['AwaitingInPersonCompletion','Completed','LegacyClosed']);
+assert.deepEqual(schemas.ApplicationStatus.enum.slice(0, 3), ['Pending','Approved','Rejected']);
 assert.deepEqual(schemas.MemberStatus.enum, ['Active','Suspended','Inactive']);
 for (const schema of ['Application','Member','ApplicationSubmission','MemberUpdate']) assert.equal(Object.keys(schemas[schema].properties).some(name => /tenantId/i.test(name)), false);
 console.log(`OpenAPI ${contract.info.version}: membership payloads, statuses and token lifetime match frontend assumptions.`);

@@ -19,7 +19,7 @@ import { adultDate, ageInYears, canonicalPhone, emailAddress, johannesburgToday,
       <section class="section receipt-section"><div class="receipt-card">
         <span class="receipt-mark" aria-hidden="true">✓</span><span class="section-tag">YOUR FIRST STEP IS COMPLETE</span>
         <h1 #receiptHeading tabindex="-1">REGISTRATION<br />RECEIVED.</h1><app-status [status]="result.status" />
-        <p class="lead">{{ result.message }}</p><p>Thanks for registering with Es’hlahleni Social Club. Visit us in person and complete the R100 membership step. Once completed at the club, your membership will be activated and you’ll receive your member number.</p>
+        <p class="lead">{{ result.message }}</p><p>Thanks for applying. An administrator will review your application.</p>
         <p>@for (line of content.contact.address; track line) { {{ line }}<br /> }</p><p><a class="button" [href]="content.contact.whatsAppUrl">Chat on WhatsApp · {{ content.contact.whatsAppNumber }}</a></p><div class="receipt-reference"><span>YOUR APPLICATION REFERENCE</span><code data-testid="application-reference">{{ result.applicationId }}</code><button type="button" class="text-button" (click)="copyReference()">{{ copied() ? 'Reference copied ✓' : 'Copy reference' }}</button></div>
         <p class="receipt-date">Submitted {{ result.submittedAtUtc | date:'d MMM yyyy, HH:mm':'+0200' }} SAST</p>
         <p><a class="button button--olive" [href]="confirmationWhatsAppUrl()" target="_blank" rel="noopener noreferrer">Contact the club about my registration</a></p>
@@ -30,7 +30,7 @@ import { adultDate, ageInYears, canonicalPhone, emailAddress, johannesburgToday,
       <section class="join-top"><div><span class="eyebrow">MEMBERSHIP / YOUR FIRST STEP</span><span>ES'HLAHLENI SOCIAL CLUB · 18+</span></div></section>
       <div class="join-layout">
         <aside class="join-guide"><span class="section-tag">MAKE YOURSELF AT HOME</span><h1>A PLACE<br />FOR YOU.</h1><p class="lead">Register online.<br />Then come through.</p><p>Share a few details to register. Visit the club to complete the R100 membership step. No account needed.</p>
-          <ol class="join-progress"><li class="current"><span>01</span><div><strong>Your application</strong><small>Complete your details and consent.</small></div></li><li><span>02</span><div><strong>Visit the club</strong><small>Complete the R100 step in person.</small></div></li><li><span>03</span><div><strong>Membership activation</strong><small>Staff activate your membership and issue your member number.</small></div></li></ol>
+          <ol class="join-progress"><li class="current"><span>01</span><div><strong>Your application</strong><small>Complete your details and consent.</small></div></li><li><span>02</span><div><strong>Review</strong><small>An administrator reviews your application.</small></div></li><li><span>03</span><div><strong>Membership decision</strong><small>Approved applicants become active members and receive a member number.</small></div></li></ol>
           <div class="adult-note"><strong>18+ ONLY</strong><p>You must be at least 18 to register.</p></div><a class="text-link" routerLink="/faq">Questions before applying? →</a>
         </aside>
         <div class="join-form-card"><div class="join-form-header"><span class="eyebrow">LET’S GET INTRODUCED</span><h2>YOUR MEMBERSHIP<br />APPLICATION.</h2><p>Fields marked * are required.</p></div>
@@ -53,7 +53,7 @@ import { adultDate, ageInYears, canonicalPhone, emailAddress, johannesburgToday,
               <div><label class="checkbox-line" for="privacyConsent"><input id="privacyConsent" type="checkbox" formControlName="privacyConsent" required aria-describedby="privacyConsent-error" [attr.aria-invalid]="invalid('privacyConsent')" /><span>I consent to the processing of my personal information for membership registration, as described in the <a routerLink="/privacy" target="_blank" rel="noopener">Privacy Notice <span class="visually-hidden">(opens in a new tab)</span></a>. *</span></label>@if (invalid('privacyConsent')) { <small id="privacyConsent-error" class="field-error" role="alert">Your privacy consent is required to apply.</small> }</div>
             </div>
             <button class="button button--full application-submit" type="submit" [disabled]="pending()">{{ pending() ? 'Submitting your application…' : 'Register for Membership' }} <span aria-hidden="true">↗</span></button>
-            <p class="form-footnote">Your registration awaits in-person completion. Visit the club and complete the R100 step before staff activate your membership.</p>
+            <p class="form-footnote">Your application will be reviewed by an administrator.</p>
           </form>
         </div>
       </div>

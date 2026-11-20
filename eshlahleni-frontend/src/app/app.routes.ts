@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { adminChildGuard, authGuard } from './core/auth.guard';
+import { adminChildGuard, authGuard, organisationAdminGuard } from './core/auth.guard';
 
 export const routes: Routes = [
   { path: 'admin/login', title: 'Administrator sign in', data: { noIndex: true }, loadComponent: () => import('./features/admin/login').then(module => module.LoginPage) },
@@ -9,12 +9,14 @@ export const routes: Routes = [
     { path: 'applications/:applicationId', title: 'Review application', loadComponent: () => import('./features/admin/application-detail').then(module => module.ApplicationDetailPage) },
     { path: 'members', title: 'Club members', loadComponent: () => import('./features/admin/members').then(module => module.MembersPage) },
     { path: 'members/:memberId', title: 'Member details', loadComponent: () => import('./features/admin/member-detail').then(module => module.MemberDetailPage) },
+    { path: 'users', title: 'User management', canActivate: [organisationAdminGuard], loadComponent: () => import('./features/admin/users').then(module => module.UsersPage) },
+    { path: 'account', title: 'My account', loadComponent: () => import('./features/admin/account').then(module => module.AccountPage) },
     { path: '**', redirectTo: '/admin' },
   ] },
   { path: '', loadComponent: () => import('./features/public/public-shell').then(module => module.PublicShell), children: [
     { path: '', pathMatch: 'full', title: 'Come through. Kick back.', data: { description: 'Cannabis, PS5 and good company in Durban Central. Get to know Es’hlahleni Social Club and start your membership registration. 18+.' }, loadComponent: () => import('./features/public/home').then(module => module.HomePage) },
     { path: 'about', title: 'About the club', data: { description: 'Meet Es’hlahleni Social Club: a cannabis-centred social club with PS5, good company and good vibes.' }, loadComponent: () => import('./features/public/info-pages').then(module => module.AboutPage) },
-    { path: 'membership', title: 'How membership works', data: { description: 'Understand online registration and in-person completion for Es’hlahleni Social Club membership.' }, loadComponent: () => import('./features/public/info-pages').then(module => module.MembershipPage) },
+    { path: 'membership', title: 'How membership works', data: { description: 'Understand the membership application and review process for Es’hlahleni Social Club membership.' }, loadComponent: () => import('./features/public/info-pages').then(module => module.MembershipPage) },
     { path: 'join', title: 'Register for membership', data: { description: 'Apply for Es’hlahleni Social Club membership online. No applicant account required. Applicants must be 18 or older.' }, loadComponent: () => import('./features/public/join').then(module => module.JoinPage) },
     { path: 'faq', title: 'House rules and FAQ', data: { description: 'Answers to membership questions and an introduction to the Es’hlahleni club experience.' }, loadComponent: () => import('./features/public/info-pages').then(module => module.FaqPage) },
     { path: 'contact', title: 'Contact the club', data: { description: 'Contact and location information for Es’hlahleni Social Club.' }, loadComponent: () => import('./features/public/info-pages').then(module => module.ContactPage) },

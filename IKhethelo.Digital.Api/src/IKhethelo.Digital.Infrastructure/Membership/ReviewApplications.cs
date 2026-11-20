@@ -14,7 +14,7 @@ public sealed class ReviewApplications(DigitalDbContext db, TenantData data, Aud
     {
         var rows = await db.Applications.FromSqlInterpolated($"SELECT * FROM membership_applications WHERE id = {id} AND tenant_id = {data.Access.TenantId} FOR UPDATE").ToListAsync(ct);
         var application = rows.SingleOrDefault() ?? throw RequestFailure.NotFound();
-        if (application.Status != MembershipApplicationStatus.AwaitingInPersonCompletion) throw RequestFailure.Conflict();
+        if (application.Status != MembershipApplicationStatus.Pending) throw RequestFailure.Conflict();
         return application;
     }
     public async Task<MemberResponse> ActivateAsync(Guid id, ReviewRequest request, CancellationToken ct) =>
@@ -24,6 +24,7 @@ public sealed class ReviewApplications(DigitalDbContext db, TenantData data, Aud
         Validation.Review(request);
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         var application = await LockPendingAsync(id, ct);
+        if (await data.Members.AnyAsync(x => x.ApplicationId == application.Id, ct)) throw RequestFailure.Conflict();
         if (await data.Members.AnyAsync(x => x.Status == MemberStatus.Active &&
             (x.NormalizedEmail == application.NormalizedEmail || x.NormalizedPhoneNumber == application.NormalizedPhoneNumber), ct)) throw RequestFailure.Conflict();
         // Prefix selection is tenant configuration/business policy, not a universal ESC assumption.
@@ -39,7 +40,7 @@ public sealed class ReviewApplications(DigitalDbContext db, TenantData data, Aud
             Email = application.Email, NormalizedEmail = application.NormalizedEmail, Status = MemberStatus.Active,
             JoinedAtUtc = now, UpdatedAtUtc = now
         };
-        db.Members.Add(member); Review(application, MembershipApplicationStatus.Completed, request, now);
+        db.Members.Add(member); Review(application, MembershipApplicationStatus.Approved, request, now);
         audit.Add("MembershipActivated", "MembershipApplication", id);
         audit.Add("RegisterMember", "Member", member.Id, new { status = "Active" });
         await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct);
@@ -51,7 +52,7 @@ public sealed class ReviewApplications(DigitalDbContext db, TenantData data, Aud
         Validation.Review(request);
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         var application = await LockPendingAsync(id, ct);
-        Review(application, MembershipApplicationStatus.LegacyClosed, request, clock.GetUtcNow());
+        Review(application, MembershipApplicationStatus.Rejected, request, clock.GetUtcNow());
         audit.Add("MembershipApplicationRejected", "MembershipApplication", id);
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);

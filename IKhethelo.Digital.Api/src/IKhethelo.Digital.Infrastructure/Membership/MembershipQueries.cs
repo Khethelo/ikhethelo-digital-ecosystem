@@ -10,6 +10,10 @@ public sealed class MembershipQueries(TenantData data, AuditWriter audit) : IMem
 {
     public async Task<Page<ApplicationResponse>> ApplicationsAsync(ListQuery query, CancellationToken ct)
     {
+        if (data.Access.TenantCode != "ESHL") query = query with { Status = query.Status switch
+        {
+            "AwaitingInPersonCompletion" => "Pending", "Completed" => "Approved", "LegacyClosed" => "Rejected", _ => query.Status
+        } };
         Validation.Query<MembershipApplicationStatus>(query);
         var rows = data.Applications.AsNoTracking();
         if (query.Status is not null) { var status = Enum.Parse<MembershipApplicationStatus>(query.Status); rows = rows.Where(x => x.Status == status); }

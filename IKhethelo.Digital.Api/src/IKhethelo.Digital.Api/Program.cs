@@ -70,6 +70,7 @@ builder.Services.AddOptions<EmailSettings>().BindConfiguration("Email")
         System.Net.Mail.MailAddress.TryCreate(s.FromAddress, out _) && !string.IsNullOrWhiteSpace(s.Username) && !string.IsNullOrWhiteSpace(s.Password)),
         "Configure Email host, port, sender, username and password when enabled.").ValidateOnStart();
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<MembershipEmails>();
 builder.Services.AddScoped<IMemberAdministration, MemberAdministration>();
 builder.Services.AddScoped<IAdministratorAuthentication, AdministratorAuthentication>();
@@ -128,7 +129,7 @@ builder.Services.AddControllers(options => options.SuppressImplicitRequiredAttri
         options.JsonSerializerOptions.PropertyNameCaseInsensitive = false;
         options.JsonSerializerOptions.UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow;
         options.JsonSerializerOptions.Converters.Add(new StrictEnumConverter<MemberStatus>());
-        options.JsonSerializerOptions.Converters.Add(new StrictEnumConverter<MembershipApplicationStatus>());
+        options.JsonSerializerOptions.Converters.Add(new MembershipStatusConverter());
     });
 builder.Services.Configure<ApiBehaviorOptions>(options => options.InvalidModelStateResponseFactory = context =>
 {

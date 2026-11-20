@@ -8,3 +8,5 @@ export const authGuard: CanActivateFn = (_route, state) => {
   });
 };
 export const adminChildGuard: CanActivateChildFn = (route, state) => authGuard(route, state);
+export const organisationAdminGuard: CanActivateFn = () =>
+  inject(AuthService).role() === 'TenantAdmin' ? true : inject(Router).createUrlTree(['/admin']);

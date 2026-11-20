@@ -7,7 +7,8 @@ import { AuthService } from './auth.service';
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const auth = inject(AuthService);
   const base = inject(API_CONFIG).apiBaseUrl.replace(/\/$/, '');
-  const protectedApi = request.url.startsWith(`${base}/admin/`);
+  const protectedApi = request.url.startsWith(`${base}/admin/`) || request.url === `${base}/admin-users` ||
+    request.url.startsWith(`${base}/admin-users/`) || request.url === `${base}/auth/change-password` || request.url === `${base}/auth/password-policy`;
   const token = protectedApi ? auth.accessToken() : null;
   const outgoing = token ? request.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : request;
   return next(outgoing).pipe(catchError((error: unknown) => {

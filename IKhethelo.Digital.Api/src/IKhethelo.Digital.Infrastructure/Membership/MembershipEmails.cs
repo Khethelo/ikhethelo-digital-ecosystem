@@ -50,10 +50,10 @@ public sealed class MembershipEmails(IEmailSender sender, ILogger<MembershipEmai
             <table role="presentation" style="width:100%;max-width:560px;margin:auto;border-collapse:collapse;background:#fff">
             <tr><td style="padding:32px;background:#1c201a;color:#f3f1e9">
             <p style="font-size:11px;letter-spacing:2px;color:#bdc99c">YOUR FIRST STEP IS COMPLETE</p>
-            <h1 style="font-size:40px;line-height:1.05;margin:24px 0">REGISTRATION<br>RECEIVED.</h1>
+            <h1 style="font-size:40px;line-height:1.05;margin:24px 0">APPLICATION<br>SUBMITTED.</h1>
             <p style="margin:0;color:#bdc99c;font-weight:bold">Pending review</p></td></tr>
             <tr><td style="padding:32px;line-height:1.7">
-            <p>Hi {WebUtility.HtmlEncode(firstName)},</p><p><strong>Your registration has been received.</strong></p>
+            <p>Hi {WebUtility.HtmlEncode(firstName)},</p><p><strong>Your application has been submitted.</strong></p>
             <p>Thanks for applying to Es’hlahleni Social Club. Your application will be reviewed by an administrator.</p>
             <p>32 Albany Grove<br>Durban Central<br>Durban<br>4001</p>
             <p style="margin:28px 0"><a href="https://wa.me/27837265910" style="display:inline-block;background:#bdc99c;color:#111410;padding:14px 18px;text-decoration:none;font-weight:bold">Chat on WhatsApp · 083 726 5910</a></p>
@@ -63,7 +63,7 @@ public sealed class MembershipEmails(IEmailSender sender, ILogger<MembershipEmai
             <p style="font-size:13px;color:#656b60">Keep this reference for any enquiry with the club. There is no public application-tracking or member-login page.</p>
             </td></tr></table></td></tr></table></body></html>
             """;
-        return SendHtmlAsync(to, "Registration received — Es’hlahleni Social Club", html);
+        return SendHtmlAsync(to, "Application submitted — Es’hlahleni Social Club", html);
     }
 
     public Task<bool> ActivatedAsync(string to, string firstName, string memberNumber) => DeliverAsync(to, "Your Es'hlahleni Membership Is Confirmed", firstName,

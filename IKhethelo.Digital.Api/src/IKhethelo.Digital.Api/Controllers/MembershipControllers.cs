@@ -18,6 +18,8 @@ public sealed class SubmissionController(ISubmitMembershipApplication submit) : 
 [Route("api/v1/auth")]
 public sealed class AuthenticationController(IAdministratorAuthentication authentication, IChangeOwnPassword changePassword) : ControllerBase
 {
+    [HttpGet("password-policy"), Authorize]
+    public IActionResult PasswordPolicy() => Ok(new { guidance = AdministratorValidation.PasswordGuidance });
     [HttpPost("login"), AllowAnonymous, EnableRateLimiting("Login")]
     public async Task<IActionResult> Login(LoginRequest request, CancellationToken ct)
     {
