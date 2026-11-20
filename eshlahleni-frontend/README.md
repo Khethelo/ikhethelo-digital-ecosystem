@@ -36,7 +36,7 @@ npm start
 
 Angular core 22.2.4, CLI/build 22.2.6, strict TypeScript/templates, standalone components, lazy routes, reactive forms and SCSS. Exact dependency versions are in `package-lock.json`. Built with Node 24.22.2. No global Angular CLI is required.
 
-Both `src/environments/` files use `/api/v1`. `proxy.conf.cjs` forwards local development `/api/**` calls to `https://localhost:57972`. Set `ESHL_API_TARGET` before `npm start` to select another loopback API port. Certificate checking is disabled only for this development proxy. Requests through the proxy are same-origin; no backend CORS change is needed. Existing Development CORS also allows localhost:4200.
+Both `src/environments/` files use `/api/v1`. `proxy.conf.cjs` forwards local development `/api/**` calls to `https://localhost:44385`, the IIS Express HTTPS address. Set `ESHL_API_TARGET` before `npm start` to select another loopback API port, such as `https://localhost:57972` for the project launch profile. Certificate checking is disabled only for this development proxy. Requests through the proxy are same-origin; no backend CORS change is needed. Existing Development CORS also allows localhost:4200.
 
 Production: run `npm run build` and serve `dist/eshlahleni-frontend/browser` through an HTTPS web server. Reverse-proxy `/api/*` to the API and fall back to `index.html` for other non-file routes. Never deploy the development server/proxy. Keep database settings, RSA keys, credentials and JWTs out of Angular configuration. `npm run preview` is a loopback-only production-build preview for local tests, not production hosting.
 

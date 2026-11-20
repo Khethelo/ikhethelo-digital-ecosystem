@@ -21,6 +21,7 @@ import { clubContent } from '../../content/club-content';
             <a routerLink="/membership" routerLinkActive="active" ariaCurrentWhenActive="page">Membership</a>
             <a routerLink="/faq" routerLinkActive="active" ariaCurrentWhenActive="page">House rules & FAQ</a>
             <a routerLink="/contact" routerLinkActive="active" ariaCurrentWhenActive="page">Contact</a>
+            <a routerLink="/admin/login">Admin sign in</a>
           </nav>
           <a class="button button--olive nav-join" routerLink="/join">Join the club <span aria-hidden="true">↗</span></a>
           <button class="menu-toggle" type="button" aria-controls="public-navigation" [attr.aria-expanded]="menuOpen()" (click)="menuOpen.set(!menuOpen())">{{ menuOpen() ? 'Close' : 'Menu' }}</button>
