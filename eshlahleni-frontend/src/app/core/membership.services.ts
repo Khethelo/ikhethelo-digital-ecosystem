@@ -32,6 +32,8 @@ export class AdminApplicationsService {
   list(query: ListQuery) { return this.http.get<Page<MembershipApplication>>(this.root, { params: parameters(query) }); }
   get(id: string) { return this.http.get<MembershipApplication>(`${this.root}/${encodeURIComponent(id)}`); }
   activate(id: string, request: ReviewRequest = {}) { return this.http.post<Member>(`${this.root}/${encodeURIComponent(id)}/activate`, this.reviewBody(request)); }
+  approve(id: string, request: ReviewRequest = {}) { return this.http.post<{ member: Member; confirmationEmailSent: boolean }>(`${this.root}/${encodeURIComponent(id)}/approve`, this.reviewBody(request)); }
+  decline(id: string, request: ReviewRequest = {}) { return this.http.post<MembershipApplication>(`${this.root}/${encodeURIComponent(id)}/decline`, this.reviewBody(request)); }
   private reviewBody(request: ReviewRequest): ReviewRequest {
     return request.reviewNotes?.trim() ? { reviewNotes: request.reviewNotes.trim() } : {};
   }

@@ -19,6 +19,7 @@ public sealed record ApplicationResponse(Guid ApplicationId, string FirstName, s
     string PhoneNumber, string Email, bool TermsAccepted, bool PrivacyConsent, MembershipApplicationStatus Status, DateTimeOffset SubmittedAtUtc);
 public sealed record MemberResponse(Guid MemberId, Guid ApplicationId, string MemberNumber, string FirstName, string LastName,
     DateOnly DateOfBirth, string PhoneNumber, string Email, MemberStatus Status, DateTimeOffset JoinedAtUtc);
+public sealed record MembershipApprovalResponse(MemberResponse Member, bool ConfirmationEmailSent);
 public sealed record Page<T>(IReadOnlyList<T> Items, [property: System.Text.Json.Serialization.JsonPropertyName("page")] int PageNumber, int PageSize, long TotalCount);
 public sealed record ListQuery(int Page = 1, int PageSize = 20, string? Search = null, string? Status = null);
 
@@ -39,6 +40,8 @@ public interface IMembershipQueries
 public interface IReviewApplications
 {
     Task<MemberResponse> ActivateAsync(Guid id, ReviewRequest request, CancellationToken ct);
+    Task<MembershipApprovalResponse> ApproveAsync(Guid id, ReviewRequest request, CancellationToken ct);
+    Task<ApplicationResponse> DeclineAsync(Guid id, ReviewRequest request, CancellationToken ct);
 }
 public interface IMemberAdministration
 {

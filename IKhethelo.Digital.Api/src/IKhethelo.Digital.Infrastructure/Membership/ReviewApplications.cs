@@ -17,7 +17,9 @@ public sealed class ReviewApplications(DigitalDbContext db, TenantData data, Aud
         if (application.Status != MembershipApplicationStatus.AwaitingInPersonCompletion) throw RequestFailure.Conflict();
         return application;
     }
-    public async Task<MemberResponse> ActivateAsync(Guid id, ReviewRequest request, CancellationToken ct)
+    public async Task<MemberResponse> ActivateAsync(Guid id, ReviewRequest request, CancellationToken ct) =>
+        (await ApproveAsync(id, request, ct)).Member;
+    public async Task<MembershipApprovalResponse> ApproveAsync(Guid id, ReviewRequest request, CancellationToken ct)
     {
         Validation.Review(request);
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
@@ -41,8 +43,19 @@ public sealed class ReviewApplications(DigitalDbContext db, TenantData data, Aud
         audit.Add("MembershipActivated", "MembershipApplication", id);
         audit.Add("RegisterMember", "Member", member.Id, new { status = "Active" });
         await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct);
-        await emails.ActivatedAsync(member.Email, member.FirstName, member.MemberNumber);
-        return member.Response();
+        var emailSent = await emails.ActivatedAsync(member.Email, member.FirstName, member.MemberNumber);
+        return new(member.Response(), emailSent);
+    }
+    public async Task<ApplicationResponse> DeclineAsync(Guid id, ReviewRequest request, CancellationToken ct)
+    {
+        Validation.Review(request);
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        var application = await LockPendingAsync(id, ct);
+        Review(application, MembershipApplicationStatus.LegacyClosed, request, clock.GetUtcNow());
+        audit.Add("MembershipApplicationRejected", "MembershipApplication", id);
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+        return application.Response();
     }
     private void Review(MembershipApplication application, MembershipApplicationStatus status, ReviewRequest request, DateTimeOffset now)
     {

@@ -5,7 +5,7 @@ import { ApiIssue } from '../core/api-errors';
 
 @Component({
   selector: 'app-status',
-  template: `<span [class]="'status status--' + status.toLowerCase()"><span class="status-dot" aria-hidden="true"></span>{{ status === 'AwaitingInPersonCompletion' ? 'Awaiting In-Person Completion' : status === 'Completed' ? 'Completed Registration' : status === 'LegacyClosed' ? 'Closed (historical)' : status }}</span>`,
+  template: `<span [class]="'status status--' + status.toLowerCase()"><span class="status-dot" aria-hidden="true"></span>{{ status === 'AwaitingInPersonCompletion' ? 'Pending' : status === 'Completed' ? 'Approved' : status === 'LegacyClosed' ? 'Declined' : status }}</span>`,
 })
 export class StatusBadge { @Input({ required: true }) status = ''; }
 

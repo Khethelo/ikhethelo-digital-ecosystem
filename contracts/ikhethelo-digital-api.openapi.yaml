@@ -190,6 +190,65 @@ paths:
         '415': {$ref: '#/components/responses/UnsupportedMedia'}
         '422': {$ref: '#/components/responses/ValidationFailed'}
         '500': {$ref: '#/components/responses/ServerError'}
+  /api/v1/admin/tenants/{tenantCode}/membership-applications/{applicationId}/approve:
+    parameters:
+      - $ref: '#/components/parameters/TenantCode'
+      - $ref: '#/components/parameters/ApplicationId'
+    post:
+      operationId: approveMembershipApplication
+      tags: [Applications]
+      summary: Approve a pending application and create an active member
+      description: Commits membership before attempting the confirmation email. An email failure does not roll back the membership.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ReviewRequest'}
+      responses:
+        '200':
+          description: Membership approved
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [member, confirmationEmailSent]
+                properties:
+                  member: {$ref: '#/components/schemas/Member'}
+                  confirmationEmailSent: {type: boolean}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /api/v1/admin/tenants/{tenantCode}/membership-applications/{applicationId}/decline:
+    parameters:
+      - $ref: '#/components/parameters/TenantCode'
+      - $ref: '#/components/parameters/ApplicationId'
+    post:
+      operationId: declineMembershipApplication
+      tags: [Applications]
+      summary: Decline a pending membership application
+      description: Records the reviewer and audit event atomically without creating a member or allocating a member number. Repeated decisions return 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ReviewRequest'}
+      responses:
+        '200':
+          description: Application declined
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Application'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/ValidationFailed'}
+        '500': {$ref: '#/components/responses/ServerError'}
   /api/v1/admin/tenants/{tenantCode}/members:
     parameters:
       - $ref: '#/components/parameters/TenantCode'

@@ -20,6 +20,7 @@ public sealed class EmailSettings
 
 public sealed class SmtpEmailSender(IOptions<EmailSettings> options) : IEmailSender
 {
+    public bool Enabled => options.Value.Enabled;
     public async Task SendAsync(string to, string subject, string htmlBody, CancellationToken cancellationToken)
     {
         var settings = options.Value;
@@ -50,10 +51,10 @@ public sealed class MembershipEmails(IEmailSender sender, ILogger<MembershipEmai
             <tr><td style="padding:32px;background:#1c201a;color:#f3f1e9">
             <p style="font-size:11px;letter-spacing:2px;color:#bdc99c">YOUR FIRST STEP IS COMPLETE</p>
             <h1 style="font-size:40px;line-height:1.05;margin:24px 0">REGISTRATION<br>RECEIVED.</h1>
-            <p style="margin:0;color:#bdc99c;font-weight:bold">Awaiting In-Person Completion</p></td></tr>
+            <p style="margin:0;color:#bdc99c;font-weight:bold">Pending review</p></td></tr>
             <tr><td style="padding:32px;line-height:1.7">
             <p>Hi {WebUtility.HtmlEncode(firstName)},</p><p><strong>Your registration has been received.</strong></p>
-            <p>Thanks for registering with Es’hlahleni Social Club. Visit us in person and complete the R100 membership step. Once completed at the club, your membership will be activated and you’ll receive your member number.</p>
+            <p>Thanks for applying to Es’hlahleni Social Club. Your application will be reviewed by an administrator.</p>
             <p>32 Albany Grove<br>Durban Central<br>Durban<br>4001</p>
             <p style="margin:28px 0"><a href="https://wa.me/27837265910" style="display:inline-block;background:#bdc99c;color:#111410;padding:14px 18px;text-decoration:none;font-weight:bold">Chat on WhatsApp · 083 726 5910</a></p>
             <div style="background:#f3f1e9;padding:20px"><p style="font-size:11px;letter-spacing:1px;margin:0 0 12px">YOUR APPLICATION REFERENCE</p>
@@ -65,10 +66,10 @@ public sealed class MembershipEmails(IEmailSender sender, ILogger<MembershipEmai
         return SendHtmlAsync(to, "Registration received — Es’hlahleni Social Club", html);
     }
 
-    public Task ActivatedAsync(string to, string firstName, string memberNumber) => DeliverAsync(to, "Your Es'hlahleni Membership Is Active", firstName,
-        "Your Es'hlahleni Social Club membership is now active. Welcome in.", memberNumber);
+    public Task<bool> ActivatedAsync(string to, string firstName, string memberNumber) => DeliverAsync(to, "Your Es'hlahleni Membership Is Confirmed", firstName,
+        "Your membership application to Es'hlahleni Social Club has been accepted. Keep this number for your membership records.", memberNumber);
 
-    private async Task DeliverAsync(string to, string subject, string firstName, string body, string? number = null)
+    private async Task<bool> DeliverAsync(string to, string subject, string firstName, string body, string? number = null)
     {
         var html = $"""
             <!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head>
@@ -81,20 +82,23 @@ public sealed class MembershipEmails(IEmailSender sender, ILogger<MembershipEmai
             <p>WhatsApp: <a href="https://wa.me/27837265910">083 726 5910</a></p>
             <p>KUPHOLIWE AK'TATAZELWA!</p><strong>Es'hlahleni Social Club</strong></main></body></html>
             """;
-        await SendHtmlAsync(to, subject, html);
+        return await SendHtmlAsync(to, subject, html);
     }
 
-    private async Task SendHtmlAsync(string to, string subject, string html)
+    private async Task<bool> SendHtmlAsync(string to, string subject, string html)
     {
         try
         {
+            if (sender is SmtpEmailSender { Enabled: false }) return false;
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
             await sender.SendAsync(to, subject, html, timeout.Token);
+            return true;
         }
         catch (Exception error)
         {
             // Do not log provider exceptions: their messages can contain recipient/account data.
             logger.LogWarning("Membership email delivery failed ({FailureType}); database operation remains committed", error.GetType().Name);
+            return false;
         }
     }
 }

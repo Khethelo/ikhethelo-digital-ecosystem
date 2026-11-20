@@ -41,6 +41,24 @@ public sealed class IntegrationTests(ApiFixture fixture)
     private static async Task<JsonElement> JsonAsync(HttpResponseMessage response) => JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.Clone();
 
     [Fact]
+    public async Task DeclineIsTenantScopedAndDoesNotCreateMember()
+    {
+        var id = await SubmitAsync(); using var client = await AuthAsync();
+        var path = $"{Admin}/membership-applications/{id}";
+        var response = await client.PostAsJsonAsync(path + "/decline", new { reviewNotes = "Reviewed" });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync(path + "/activate", new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync(path + "/decline", new { })).StatusCode);
+        await using var db = fixture.Db();
+        var application = await db.Applications.SingleAsync(x => x.Id == id);
+        Assert.Equal(MembershipApplicationStatus.LegacyClosed, application.Status);
+        Assert.Equal(fixture.TenantAdminId, application.ReviewedByAdminId);
+        Assert.NotNull(application.ReviewedAtUtc);
+        Assert.False(await db.Members.AnyAsync(x => x.ApplicationId == id));
+        Assert.True(await db.AuditLogs.AnyAsync(x => x.EntityId == id && x.Action == "MembershipApplicationRejected"));
+    }
+
+    [Fact]
     public async Task CanonicalTenantCodeSupportsTheRequestedAdministrativeWorkflow()
     {
         var id = await SubmitAsync(); using var client = await AuthAsync();

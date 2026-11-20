@@ -18,7 +18,7 @@ describe('contract and administrator session', () => {
     TestBed.inject(AuthService).login({ email: ' admin@example.test ', password: 'temporary-password' }).subscribe();
     const request = http.expectOne('/api/v1/auth/login');
     expect(request.request.headers.has('Authorization')).toBe(false);
-    request.flush({ accessToken: 'test-token', tokenType: 'Bearer', expiresIn: 900 });
+    request.flush({ accessToken: 'test-token', tokenType: 'Bearer', expiresIn: 1800 });
   }
   it('whitelists public fields and preserves the calendar birth date', () => {
     TestBed.inject(PublicMembershipService).submit({ firstName: ' John ', lastName: ' Gotti ', dateOfBirth: '2000-11-05', phoneNumber: '+27843517720', email: ' john@example.test ', termsAccepted: true, privacyConsent: true, categoryId: 'not-allowed' } as any).subscribe();

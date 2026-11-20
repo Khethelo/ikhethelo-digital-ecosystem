@@ -35,10 +35,12 @@ public sealed class EmailWorkflowTests(ApiFixture fixture)
         Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync(path, submission)).StatusCode);
         var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "tenant@example.com", password = fixture.Password });
         client.DefaultRequestHeaders.Authorization = new("Bearer", (await login.Content.ReadFromJsonAsync<TokenResponse>())!.AccessToken);
-        var activation = $"/api/v1/admin/tenants/ESHL/membership-applications/{applicationId}/activate";
+        var activation = $"/api/v1/admin/tenants/ESHL/membership-applications/{applicationId}/approve";
         var activated = await client.PostAsJsonAsync(activation, new { });
         Assert.Equal(HttpStatusCode.OK, activated.StatusCode);
-        var member = await activated.Content.ReadFromJsonAsync<JsonElement>();
+        var approval = await activated.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(!fail, approval.GetProperty("confirmationEmailSent").GetBoolean());
+        var member = approval.GetProperty("member");
         Assert.Equal(2, sender.Calls); Assert.True(sender.SawActivationCommit);
         Assert.Contains(member.GetProperty("memberNumber").GetString()!, sender.LastBody);
         Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync(activation, new { })).StatusCode);

@@ -108,6 +108,7 @@ public sealed class TenantPolicyHandler(ITenantContext tenant, TenantRouting rou
                 : routing.CrossTenantMembership.TryGetValue(access.ActorId!.Value.ToString(), out var codes) &&
                   codes.Contains(access.TenantCode, StringComparer.Ordinal);
         }
-        if (allowed && context.User.IsInRole(access.IsInternal ? "IKhetheloAdmin" : "TenantAdmin")) context.Succeed(requirement);
+        if (allowed && (context.User.IsInRole(access.IsInternal ? "IKhetheloAdmin" : "TenantAdmin") ||
+            (!access.IsInternal && access.TenantCode == "ESHL" && requirement.InternalOnly is null && context.User.IsInRole("TenantStaff")))) context.Succeed(requirement);
     }
 }

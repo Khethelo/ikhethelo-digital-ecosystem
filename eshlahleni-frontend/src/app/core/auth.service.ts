@@ -28,7 +28,7 @@ export class AuthService {
       email: request.email.trim(), password: request.password,
     }).pipe(tap(response => {
       if (attempt !== this.revision) throw new Error('Sign-in attempt no longer active.');
-      if (!response.accessToken || response.tokenType !== 'Bearer' || response.expiresIn !== 900) throw new Error('Unexpected authentication response.');
+      if (!response.accessToken || response.tokenType !== 'Bearer' || response.expiresIn !== 1800) throw new Error('Unexpected authentication response.');
       clearTimeout(this.expiryTimer);
       this.token.set(response.accessToken);
       this.expiresAt.set(Date.now() + response.expiresIn * 1000);

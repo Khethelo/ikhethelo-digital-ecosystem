@@ -58,6 +58,8 @@ public sealed class AdministrationTests(ApiFixture fixture)
         var id = payload.GetProperty("id").GetGuid();
         using var staff = await Auth(email, password);
         Assert.Equal(HttpStatusCode.OK, (await staff.GetAsync("/api/v1/admin/tenants/ESHL/ntm/dashboard")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await staff.GetAsync("/api/v1/admin/tenants/ESHL/membership-applications")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await staff.GetAsync("/api/v1/admin/tenants/SECOND/membership-applications")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await staff.GetAsync("/api/v1/admin-users")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await staff.PostAsJsonAsync("/api/v1/admin-users", new { email = Email(), password = Password(), role = "TenantStaff" })).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await staff.PostAsJsonAsync($"/api/v1/admin-users/{fixture.TenantAdminId}/reset-password", new { newPassword = Password() })).StatusCode);

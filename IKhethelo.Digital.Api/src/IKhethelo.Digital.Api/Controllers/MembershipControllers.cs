@@ -47,6 +47,10 @@ public sealed class ApplicationsController(IMembershipQueries queries, IReviewAp
     public async Task<IActionResult> Get(string applicationId, CancellationToken ct) => Ok(await queries.ApplicationAsync(ResourceId.Parse(applicationId), ct));
     [HttpPost("{applicationId}/activate")]
     public async Task<IActionResult> Activate(string applicationId, ReviewRequest request, CancellationToken ct) => Ok(await review.ActivateAsync(ResourceId.Parse(applicationId), request, ct));
+    [HttpPost("{applicationId}/approve")]
+    public async Task<IActionResult> Approve(string applicationId, ReviewRequest request, CancellationToken ct) => Ok(await review.ApproveAsync(ResourceId.Parse(applicationId), request, ct));
+    [HttpPost("{applicationId}/decline")]
+    public async Task<IActionResult> Decline(string applicationId, ReviewRequest request, CancellationToken ct) => Ok(await review.DeclineAsync(ResourceId.Parse(applicationId), request, ct));
 }
 
 [ApiController, Authorize(Policy = "MembershipAccess")]
