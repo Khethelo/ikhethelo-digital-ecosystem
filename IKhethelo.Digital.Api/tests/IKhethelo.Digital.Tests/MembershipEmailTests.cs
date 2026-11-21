@@ -42,6 +42,8 @@ public sealed class MembershipEmailTests
         Assert.Contains("Submitted 10 Nov 2026, 20:02 SAST", message.Html);
         Assert.Contains("Pending review", message.Html);
         Assert.Contains("YOUR FIRST STEP IS COMPLETE", message.Html);
+        Assert.Contains("cid:eshlahleni-logo", message.Html);
+        Assert.Contains("Es'hlahleni Social Club logo", message.Html);
         Assert.Contains("no public application-tracking or member-login page", message.Html);
         Assert.Contains("https://wa.me/27837265910", message.Html);
         Assert.Contains("&lt;Person&gt;", message.Html);
@@ -67,5 +69,9 @@ public sealed class MembershipEmailTests
         Assert.False(await emails.ActivatedAsync("person@example.test", "Person", "ESC-00123"));
         var message = Assert.Single(sender.Messages);
         Assert.Contains("ESC-00123", message.Html); Assert.Contains("has been confirmed", message.Html);
+        Assert.Contains("#1c201a", message.Html); Assert.Contains("#bdc99c", message.Html);
+        Assert.Contains("cid:eshlahleni-logo", message.Html);
+        Assert.Contains("MEMBERSHIP<br>CONFIRMED.", message.Html);
+        Assert.NotNull(typeof(SmtpEmailSender).Assembly.GetManifestResourceStream("IKhethelo.Digital.Membership.eshlahleni-logo.jpeg"));
     }
 }
