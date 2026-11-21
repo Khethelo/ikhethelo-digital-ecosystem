@@ -137,7 +137,7 @@ public sealed class DatabaseAdoptionTests(ApiFixture fixture)
         public DigitalDbContext Db() => new(new DbContextOptionsBuilder<DigitalDbContext>().UseNpgsql(Connection).Options);
         public static async Task<TestDatabase> CreateAsync()
         {
-            var control = Environment.GetEnvironmentVariable("IKD_TEST_POSTGRES") ?? throw new InvalidOperationException("Configure isolated test PostgreSQL.");
+            var control = LocalTestPostgres.RequireLoopback(Environment.GetEnvironmentVariable("IKD_TEST_POSTGRES") ?? throw new InvalidOperationException("Configure isolated test PostgreSQL."));
             var name = "ikd_adoption_" + Guid.NewGuid().ToString("N");
             await ApiFixture.ExecuteAsync(control, $"CREATE DATABASE {name}");
             return new(new NpgsqlConnectionStringBuilder(control) { Database = name, Pooling = false }.ConnectionString, control, name);

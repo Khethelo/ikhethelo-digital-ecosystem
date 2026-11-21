@@ -4,8 +4,9 @@ using IKhethelo.Digital.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using IKhethelo.Digital.Tests;
 
-var control = Environment.GetEnvironmentVariable("IKD_TEST_POSTGRES") ?? throw new InvalidOperationException("Provide an isolated PostgreSQL test connection.");
+var control = LocalTestPostgres.RequireLoopback(Environment.GetEnvironmentVariable("IKD_TEST_POSTGRES") ?? throw new InvalidOperationException("Provide an isolated PostgreSQL test connection."));
 var database = Environment.GetEnvironmentVariable("ESHL_TEST_DATABASE") ?? "";
 if (!System.Text.RegularExpressions.Regex.IsMatch(database, "^eshl_frontend_e2e_[a-f0-9]{32}$"))
     throw new InvalidOperationException("Only freshly named frontend verification databases are supported.");

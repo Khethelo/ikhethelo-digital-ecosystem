@@ -58,8 +58,8 @@ public sealed class ApiFixture : IAsyncLifetime
     public DigitalDbContext Db() => new(new DbContextOptionsBuilder<DigitalDbContext>().UseNpgsql(Connection).Options);
     public async Task InitializeAsync()
     {
-        adminConnection = Environment.GetEnvironmentVariable("IKD_TEST_POSTGRES") ??
-            throw new InvalidOperationException("Set IKD_TEST_POSTGRES to an isolated PostgreSQL connection with CREATE DATABASE permission; tests never skip database verification.");
+        adminConnection = LocalTestPostgres.RequireLoopback(Environment.GetEnvironmentVariable("IKD_TEST_POSTGRES") ??
+            throw new InvalidOperationException("Set IKD_TEST_POSTGRES to an isolated PostgreSQL connection with CREATE DATABASE permission; tests never skip database verification."));
         var builder = new NpgsqlConnectionStringBuilder(adminConnection)
         {
             Database = databaseName, Pooling = true, MaxPoolSize = 20, Timeout = 60, CommandTimeout = 120

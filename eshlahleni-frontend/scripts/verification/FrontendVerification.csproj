@@ -1,4 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
   <ItemGroup><FrameworkReference Include="Microsoft.AspNetCore.App" /><ProjectReference Include="../../../IKhethelo.Digital.Api/src/IKhethelo.Digital.Infrastructure/IKhethelo.Digital.Infrastructure.csproj" /></ItemGroup>
+  <ItemGroup><Compile Include="../../../IKhethelo.Digital.Api/tests/IKhethelo.Digital.Tests/LocalTestPostgres.cs" Link="LocalTestPostgres.cs" /></ItemGroup>
 </Project>

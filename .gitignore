@@ -15,6 +15,7 @@
 # Local tools and temporary files
 .frontend-tools/
 .verification/
+.local-development/
 *.log
 *.tmp
 
