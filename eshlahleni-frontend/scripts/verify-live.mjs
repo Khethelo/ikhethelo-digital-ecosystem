@@ -22,7 +22,7 @@ try {
   await command('dotnet', [helper]); console.log('Disposable schema and temporary administrator ready.');
   const apiPort = await port(); const webPort = await port();
   const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048, privateKeyEncoding: { type: 'pkcs8', format: 'pem' }, publicKeyEncoding: { type: 'spki', format: 'pem' } });
-  const apiEnv = { ...env, ASPNETCORE_ENVIRONMENT: 'Development', ConnectionStrings__DefaultConnection: env.IKD_TEST_POSTGRES.replace(/Database\s*=\s*[^;]+/i, `Database=${database}`), Jwt__Issuer: 'http://frontend-verification', Jwt__Audience: 'frontend-verification', Jwt__PrivateKeyPem: privateKey, RateLimits__PerMinute: '1000' };
+  const apiEnv = { ...env, ASPNETCORE_ENVIRONMENT: 'Development', Email__Enabled: 'false', ConnectionStrings__DefaultConnection: env.IKD_TEST_POSTGRES.replace(/Database\s*=\s*[^;]+/i, `Database=${database}`), Jwt__Issuer: 'http://frontend-verification', Jwt__Audience: 'frontend-verification', Jwt__PrivateKeyPem: privateKey, RateLimits__PerMinute: '1000' };
   if (!apiEnv.ConnectionStrings__DefaultConnection.includes(`Database=${database}`)) throw new Error('Control connection must explicitly name its database.');
   api = spawn('dotnet', [workspace + 'IKhethelo.Digital.Api/src/IKhethelo.Digital.Api/bin/Release/net10.0/IKhethelo.Digital.Api.dll', '--urls', `http://127.0.0.1:${apiPort}`], { cwd: workspace + 'IKhethelo.Digital.Api/src/IKhethelo.Digital.Api', env: apiEnv, stdio: 'ignore', windowsHide: true });
   api.on('error', () => {});

@@ -8,6 +8,7 @@ export const routes: Routes = [
     { path: 'applications', title: 'Membership applications', loadComponent: () => import('./features/admin/applications').then(module => module.ApplicationsPage) },
     { path: 'applications/:applicationId', title: 'Review application', loadComponent: () => import('./features/admin/application-detail').then(module => module.ApplicationDetailPage) },
     { path: 'members', title: 'Club members', loadComponent: () => import('./features/admin/members').then(module => module.MembersPage) },
+    { path: 'members/new', title: 'Register member', loadComponent: () => import('./features/admin/register-member').then(module => module.RegisterMemberPage) },
     { path: 'members/:memberId', title: 'Member details', loadComponent: () => import('./features/admin/member-detail').then(module => module.MemberDetailPage) },
     { path: 'users', title: 'User management', canActivate: [organisationAdminGuard], loadComponent: () => import('./features/admin/users').then(module => module.UsersPage) },
     { path: 'account', title: 'My account', loadComponent: () => import('./features/admin/account').then(module => module.AccountPage) },

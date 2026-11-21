@@ -6,6 +6,28 @@ async function fillApplication(page: Page, name = 'Naledi', email = 'naledi@exam
   await page.locator('#dateOfBirth').fill('1995-06-15'); await page.locator('#phoneNumber').fill(phone);
   await page.locator('#email').fill(email); await page.locator('#termsAccepted').check(); await page.locator('#privacyConsent').check();
 }
+test('walk-in registration creates an active member on mobile', async ({ page }) => {
+  test.skip(!process.env['ESHL_E2E_EMAIL'], 'Run with the disposable database harness.');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin/login');
+  await page.locator('input#adminEmail').fill(process.env['ESHL_E2E_EMAIL']!);
+  await page.locator('input#adminPassword').fill(process.env['ESHL_E2E_PASSWORD']!);
+  await page.getByRole('button', { name: 'Sign in', exact: false }).click();
+  await page.getByRole('link', { name: '+ Register Member' }).click();
+  await expect(page).toHaveURL(/\/admin\/members\/new$/);
+  await page.locator('#firstName').fill('Walkin'); await page.locator('#lastName').fill('Member');
+  await page.locator('#dateOfBirth').fill('1990-04-15'); await page.locator('#phoneNumber').fill('+27' + String(Date.now()).slice(-9));
+  await page.locator('#email').fill(`walkin-${Date.now()}@example.test`);
+  await page.getByLabel('Member accepted the membership terms').check();
+  await page.getByLabel('Member provided privacy consent').check();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.getByRole('button', { name: 'Register Member' }).click();
+  await expect(page.getByText(/ESC-\d{5}/)).toBeVisible();
+  await expect(page.getByText('The confirmation email could not be sent.', { exact: false })).toBeVisible();
+  await page.getByRole('link', { name: 'View Member' }).click();
+  await expect(page.getByTestId('member-number')).toHaveText(/^ESC-/);
+  await expect(page.getByText('Active', { exact: true }).first()).toBeVisible();
+});
 test('public site, mobile navigation, eligibility and recoverable API errors', async ({ page }) => {
   await mkdir('test-results/screenshots', { recursive: true });
   await page.goto('/'); await expect(page.locator('h1')).toContainText('Come through.');
@@ -39,7 +61,7 @@ test('real registration, membership approval, member edits and session guard', a
   await expect(page.getByRole('link', { name: /Chat on WhatsApp/ })).toHaveAttribute('href', 'https://wa.me/27837265910');
   await expect(page.locator('.receipt-card')).toContainText('32 Albany Grove');
   await page.goto('/admin/members'); await expect(page).toHaveURL(/admin\/login/);
-  await page.locator('#adminEmail').fill(process.env['ESHL_E2E_EMAIL']!); await page.locator('#adminPassword').fill(process.env['ESHL_E2E_PASSWORD']!);
+  await page.locator('input#adminEmail').fill(process.env['ESHL_E2E_EMAIL']!); await page.locator('input#adminPassword').fill(process.env['ESHL_E2E_PASSWORD']!);
   await page.getByRole('button', { name: 'Sign in', exact: false }).click();
   await expect(page).toHaveURL(/admin\/members/);
   // Separate authenticated assertion client avoids racing Chrome's navigation response-body lifetime.
@@ -89,7 +111,7 @@ test('administrator pagination, forbidden/missing records and expired sessions',
     pages.push(url.searchParams.get('page') ?? '1');
     return route.fulfill({ json: { items: url.pathname.endsWith('/members') ? [] : [applicant], totalCount: url.pathname.endsWith('/members') ? 0 : 45, page: Number(url.searchParams.get('page') ?? '1'), pageSize: 20 } });
   });
-  await page.goto('/admin/login'); await page.locator('#adminEmail').fill('admin@example.test'); await page.locator('#adminPassword').fill('test-password'); await page.getByRole('button', { name: 'Sign in', exact: false }).click();
+  await page.goto('/admin/login'); await page.locator('input#adminEmail').fill('admin@example.test'); await page.locator('input#adminPassword').fill('test-password'); await page.getByRole('button', { name: 'Sign in', exact: false }).click();
   await expect(page).toHaveURL(/\/admin$/); await page.locator('.admin-nav').getByRole('link', { name: 'Membership Applications' }).click();
   await page.getByRole('button', { name: 'Next page' }).click(); await expect(page).toHaveURL(/page=2/); await expect.poll(() => pages).toContain('2');
   failure = 403; await page.locator('#applicationStatus').selectOption('Approved'); await page.getByRole('button', { name: 'Search', exact: false }).click();
@@ -103,15 +125,15 @@ test('organisation administrator manages staff and staff changes own password', 
   test.skip(!process.env['ESHL_E2E_EMAIL'], 'Run with the disposable database harness.');
   let email = `staff-${Date.now()}@example.test`; const initial = 'Initial-test1!', reset = 'Reset-test2!', changed = 'Changed-test3!';
   await page.goto('/admin/login');
-  await page.locator('#adminEmail').fill(process.env['ESHL_E2E_EMAIL']!);
-  await page.locator('#adminPassword').fill(process.env['ESHL_E2E_PASSWORD']!);
+  await page.locator('input#adminEmail').fill(process.env['ESHL_E2E_EMAIL']!);
+  await page.locator('input#adminPassword').fill(process.env['ESHL_E2E_PASSWORD']!);
   await page.getByRole('button', { name: 'Sign in', exact: false }).click();
   await page.getByRole('link', { name: 'User Management' }).click();
   await page.getByRole('button', { name: 'Add administrator' }).click();
   await page.locator('#userEmail').fill(email); await page.locator('#userPassword').fill(initial); await page.locator('#userConfirm').fill(initial);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   let row = page.locator('tr').filter({ hasText: email }); await expect(row).toBeVisible();
-  await row.getByRole('button', { name: 'Edit', exact: true }).click();
+  await row.getByRole('button', { name: /^Edit / }).click();
   email = `edited-${Date.now()}@example.test`; await page.locator('#userEmail').fill(email);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   row = page.locator('tr').filter({ hasText: email }); await expect(row).toBeVisible();
@@ -123,7 +145,7 @@ test('organisation administrator manages staff and staff changes own password', 
   await expect(page.getByText('Administrator updated.')).toBeVisible();
   expect((await request.get('/api/v1/admin/tenants/ESHL/members', { headers: { Authorization: `Bearer ${oldToken}` } })).status()).toBe(401);
   await page.getByRole('button', { name: 'Sign out', exact: false }).first().click();
-  await page.locator('#adminEmail').fill(email); await page.locator('#adminPassword').fill(reset);
+  await page.locator('input#adminEmail').fill(email); await page.locator('input#adminPassword').fill(reset);
   await page.getByRole('button', { name: 'Sign in', exact: false }).click();
   await expect(page.getByRole('link', { name: 'User Management' })).toHaveCount(0);
   const staffLogin = await request.post('/api/v1/auth/login', { data: { email, password: reset } });
@@ -141,7 +163,7 @@ test('organisation administrator manages staff and staff changes own password', 
     phoneNumber: `+2784${Date.now().toString().slice(-7)}`, email: applicantEmail, termsAccepted: true, privacyConsent: true,
   } });
   expect(submitted.status()).toBe(201); const applicationId = (await submitted.json()).applicationId;
-  await page.locator('#adminEmail').fill(email); await page.locator('#adminPassword').fill(changed);
+  await page.locator('input#adminEmail').fill(email); await page.locator('input#adminPassword').fill(changed);
   await page.getByRole('button', { name: 'Sign in', exact: false }).click();
   await page.locator('.admin-nav').getByRole('link', { name: 'Membership Applications' }).click();
   await page.locator('#applicationSearch').fill(applicantEmail); await page.getByRole('button', { name: 'Search', exact: false }).click();

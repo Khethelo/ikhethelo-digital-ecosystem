@@ -15,6 +15,41 @@ public sealed class EmailWorkflowTests(ApiFixture fixture)
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task DirectRegistrationReportsEmailResultAfterCommit(bool fail)
+    {
+        var sender = new DirectSender(fixture, fail);
+        await using var factory = fixture.Factory.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+        {
+            services.RemoveAll<IEmailSender>(); services.AddSingleton<IEmailSender>(sender);
+        }));
+        using var client = factory.CreateClient(new() { BaseAddress = new Uri("https://localhost") });
+        var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email = "tenant@example.com", password = fixture.Password });
+        client.DefaultRequestHeaders.Authorization = new("Bearer", (await login.Content.ReadFromJsonAsync<TokenResponse>())!.AccessToken);
+        var email = Guid.NewGuid().ToString("N") + "@example.test";
+        var request = new MemberRegistration("Walk", "In", new(1990, 1, 1), "+27" + Random.Shared.NextInt64(100000000, 999999999), email, true, true);
+        var response = await client.PostAsJsonAsync("/api/v1/admin/tenants/ESHL/members", request);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(!fail, body.GetProperty("confirmationEmailSent").GetBoolean());
+        Assert.Matches("^ESC-[0-9]{5,}$", body.GetProperty("member").GetProperty("memberNumber").GetString()!);
+        Assert.True(sender.SawCommittedMember);
+        await using var db = fixture.Db();
+        Assert.Equal(1, await db.Members.CountAsync(x => x.Email == email));
+        Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync("/api/v1/admin/tenants/ESHL/members", request)).StatusCode);
+    }
+    private sealed class DirectSender(ApiFixture fixture, bool fail) : IEmailSender
+    {
+        public bool SawCommittedMember { get; private set; }
+        public async Task SendAsync(string to, string subject, string htmlBody, CancellationToken cancellationToken)
+        {
+            await using var db = fixture.Db();
+            SawCommittedMember = await db.Members.AnyAsync(x => x.Email == to, cancellationToken);
+            if (fail) throw new InvalidOperationException("Simulated delivery failure");
+        }
+    }
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task NotificationsObserveCommittedStateAndFailuresPreserveSuccess(bool fail)
     {
         var email = Guid.NewGuid().ToString("N") + "@example.test";

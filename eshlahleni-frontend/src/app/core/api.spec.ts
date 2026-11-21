@@ -30,6 +30,13 @@ describe('contract and administrator session', () => {
     expect(request.request.headers.has('Authorization')).toBe(false);
     request.flush({ applicationId: 'id', status: 'Pending', submittedAtUtc: '2026-11-06T00:00:00Z', message: 'Received' });
   });
+  it('registers walk-in members with only allowed fields', () => {
+    TestBed.inject(AdminMembersService).register({ firstName: ' Jane ', lastName: ' Doe ', dateOfBirth: '1990-01-01', phoneNumber: '+27821234567', email: ' jane@example.test ', termsAccepted: true, privacyConsent: true, memberNumber: 'fake' } as any).subscribe();
+    const req = http.expectOne('/api/v1/admin/tenants/ESHL/members');
+    expect(req.request.method).toBe('POST');
+    expect(Object.keys(req.request.body).sort()).toEqual(['firstName', 'lastName', 'dateOfBirth', 'phoneNumber', 'email', 'termsAccepted', 'privacyConsent'].sort());
+    req.flush({ member: { memberNumber: 'ESC-00001' }, confirmationEmailSent: false });
+  });
   it('uses server filters and exact review and member status payloads', () => {
     const apps = TestBed.inject(AdminApplicationsService);
     apps.list({ page: 2, pageSize: 20, status: 'Pending', search: ' Ada ' }).subscribe();

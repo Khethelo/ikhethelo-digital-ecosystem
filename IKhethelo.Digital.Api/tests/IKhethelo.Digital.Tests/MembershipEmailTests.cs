@@ -66,6 +66,6 @@ public sealed class MembershipEmailTests
         var emails = new MembershipEmails(sender, NullLogger<MembershipEmails>.Instance);
         Assert.False(await emails.ActivatedAsync("person@example.test", "Person", "ESC-00123"));
         var message = Assert.Single(sender.Messages);
-        Assert.Contains("ESC-00123", message.Html); Assert.Contains("has been accepted", message.Html);
+        Assert.Contains("ESC-00123", message.Html); Assert.Contains("has been confirmed", message.Html);
     }
 }

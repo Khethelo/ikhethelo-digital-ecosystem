@@ -57,6 +57,10 @@ public sealed class AdministrationTests(ApiFixture fixture)
         var payload = await Json(created); Assert.Equal("TenantStaff", payload.GetProperty("role").GetString());
         var id = payload.GetProperty("id").GetGuid();
         using var staff = await Auth(email, password);
+        var walkIn = await staff.PostAsJsonAsync(Tenant + "/members", Member());
+        Assert.Equal(HttpStatusCode.Created, walkIn.StatusCode);
+        Assert.False((await Json(walkIn)).GetProperty("confirmationEmailSent").GetBoolean());
+        Assert.Equal(HttpStatusCode.Forbidden, (await staff.PostAsJsonAsync("/api/v1/admin/tenants/SECOND/members", Member())).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await staff.GetAsync("/api/v1/admin/tenants/ESHL/ntm/dashboard")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await staff.GetAsync("/api/v1/admin/tenants/ESHL/membership-applications")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await staff.GetAsync("/api/v1/admin/tenants/SECOND/membership-applications")).StatusCode);
@@ -267,6 +271,7 @@ public sealed class AdministrationTests(ApiFixture fixture)
         Assert.Equal(1, categories.GetProperty("totalCount").GetInt64());
         var registration = Member(category); var response = await client.PostAsJsonAsync(Tenant + "/members", registration);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode); var member = await Json(response); var id = member.GetProperty("memberId").GetGuid();
+        Assert.Equal(id, member.GetProperty("member").GetProperty("memberId").GetGuid()); Assert.False(member.GetProperty("confirmationEmailSent").GetBoolean());
         Assert.False(member.TryGetProperty("tenantId", out _)); Assert.Matches("^ESC-", member.GetProperty("memberNumber").GetString()!);
         var assignment = await Json(await client.GetAsync($"{Tenant}/members/{id}/category")); Assert.Equal(category, assignment.GetProperty("categoryId").GetGuid());
         Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"{Tenant}/members/{id}/status", new { status = "Suspended" })).StatusCode);
@@ -300,6 +305,10 @@ public sealed class AdministrationTests(ApiFixture fixture)
     {
         using var client = await Auth(); var request = Member();
         Assert.Equal((HttpStatusCode)422, (await client.PostAsJsonAsync(Tenant + "/members", request with { TermsAccepted = false })).StatusCode);
+        Assert.Equal((HttpStatusCode)422, (await client.PostAsJsonAsync(Tenant + "/members", request with { PrivacyConsent = false })).StatusCode);
+        Assert.Equal((HttpStatusCode)422, (await client.PostAsJsonAsync(Tenant + "/members", request with { DateOfBirth = DateOnly.FromDateTime(DateTime.UtcNow).AddYears(-10) })).StatusCode);
+        Assert.Equal((HttpStatusCode)422, (await client.PostAsJsonAsync(Tenant + "/members", request with { PhoneNumber = "0123" })).StatusCode);
+        Assert.Equal((HttpStatusCode)422, (await client.PostAsJsonAsync(Tenant + "/members", request with { Email = "invalid" })).StatusCode);
         var submitted = await fixture.Client.PostAsJsonAsync("/api/v1/public/eshlahleni/membership-applications",
             new ApplicationSubmission(request.FirstName, request.LastName, request.DateOfBirth, request.PhoneNumber, request.Email, true, true));
         Assert.Equal(HttpStatusCode.Created, submitted.StatusCode);

@@ -11,7 +11,7 @@ import { ApiError, LoadingState, StatusBadge } from '../../shared/ui';
 interface Overview { pending: Page<MembershipApplication>; active: Page<Member>; members: Page<Member>; }
 @Component({
   imports: [RouterLink, ApiError, LoadingState, StatusBadge, DatePipe],
-  template: `<div class="admin-page-heading"><div><span class="section-tag">YOUR CLUB AT A GLANCE</span><h1>THE OVERVIEW.</h1><p>Applications to review. Members to look after.</p></div><span class="overview-date">{{ today | date:'EEEE, d MMMM yyyy':'+0200' }}</span></div>
+  template: `<div class="admin-page-heading"><div><span class="section-tag">YOUR CLUB AT A GLANCE</span><h1>THE OVERVIEW.</h1><p>Applications to review. Members to look after.</p></div><div class="admin-heading-actions"><a class="button" routerLink="/admin/members/new">+ Register Member</a><span class="overview-date">{{ today | date:'EEEE, d MMMM yyyy':'+0200' }}</span></div></div>
     <app-api-error [issue]="issue()" [canRetry]="true" (retry)="load()" />
     @if (loading()) { <app-loading text="Loading your club overview…" /> }
     @if (!loading() && overview(); as data) {

@@ -67,7 +67,7 @@ public sealed class MembershipEmails(IEmailSender sender, ILogger<MembershipEmai
     }
 
     public Task<bool> ActivatedAsync(string to, string firstName, string memberNumber) => DeliverAsync(to, "Your Es'hlahleni Membership Is Confirmed", firstName,
-        "Your membership application to Es'hlahleni Social Club has been accepted. Keep this number for your membership records.", memberNumber);
+        "Your membership to Es'hlahleni Social Club has been confirmed. Keep this number for your membership records.", memberNumber);
 
     private async Task<bool> DeliverAsync(string to, string subject, string firstName, string body, string? number = null)
     {

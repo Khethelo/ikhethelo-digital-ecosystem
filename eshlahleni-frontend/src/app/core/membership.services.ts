@@ -42,6 +42,11 @@ export class AdminMembersService {
   private readonly http = inject(HttpClient);
   private readonly config = inject(API_CONFIG);
   private readonly root = endpoint(this.config.apiBaseUrl, `/admin/tenants/${encodeURIComponent(this.config.adminTenantCode)}/members`);
+  register(request: ApplicationSubmission) {
+    const body: ApplicationSubmission = { firstName: request.firstName.trim(), lastName: request.lastName.trim(), dateOfBirth: request.dateOfBirth,
+      phoneNumber: request.phoneNumber, email: request.email.trim(), termsAccepted: request.termsAccepted, privacyConsent: request.privacyConsent };
+    return this.http.post<{ member: Member; confirmationEmailSent: boolean }>(this.root, body);
+  }
   list(query: ListQuery) { return this.http.get<Page<Member>>(this.root, { params: parameters(query) }); }
   get(id: string) { return this.http.get<Member>(`${this.root}/${encodeURIComponent(id)}`); }
   update(id: string, request: ContactDetails) {
