@@ -12,7 +12,7 @@ import { RetryCooldown } from '../../shared/retry-cooldown';
 @Component({
   imports: [ReactiveFormsModule, RouterLink, ApiError, Field],
   template: `<a class="skip-link" href="#main-content">Skip to sign in</a><div class="login-layout">
-    <aside class="login-brand"><a routerLink="/" class="login-back">← Back to the club</a><div class="login-brand-centre"><img src="assets/branding/eshlahleni-logo.jpeg" alt="Es’hlahleni Social Club emblem" width="340" height="380" /><h2>THE CLUB.<br />IN GOOD HANDS.</h2><p>ES'HLAHLENI SOCIAL CLUB · EST. 2025</p></div><span class="eyebrow">KUPHOLIWE AK’TATAZELWA!</span></aside>
+    <aside class="login-brand"><a routerLink="/" class="login-back">← Back to the club</a><div class="login-brand-centre"><img src="assets/branding/eshlahleni-logo.jpeg" alt="Es’hlahleni Social Club emblem" width="340" height="340" /><h2>Admin Dashboard</h2><p>ES'HLAHLENI SOCIAL CLUB · EST. 2025</p></div><span class="eyebrow">KUPHOLIWE AK’TATAZELWA!</span></aside>
     <main class="login-main" id="main-content" tabindex="-1"><div class="login-form-wrap"><span class="section-tag">CLUB ADMINISTRATION</span><h1>WELCOME<br />BACK.</h1><p class="muted">Sign in to complete registrations and manage members.</p>
       @if (auth.sessionMessage()) { <div class="alert" role="status">{{ auth.sessionMessage() }}</div> }
       <app-api-error [issue]="issue()" />
