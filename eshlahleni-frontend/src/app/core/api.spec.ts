@@ -12,10 +12,11 @@ import { organisationAdminGuard } from './auth.guard';
 describe('contract and administrator session', () => {
   let http: HttpTestingController;
   beforeEach(() => {
+    sessionStorage.clear();
     TestBed.configureTestingModule({ providers: [provideRouter([]), provideHttpClient(withInterceptors([authInterceptor])), provideHttpClientTesting()] });
     http = TestBed.inject(HttpTestingController);
   });
-  afterEach(() => { http.verify(); vi.useRealTimers(); });
+  afterEach(() => { http.verify(); sessionStorage.clear(); vi.useRealTimers(); });
   function login() {
     TestBed.inject(AuthService).login({ email: ' admin@example.test ', password: 'temporary-password' }).subscribe();
     const request = http.expectOne('/api/v1/auth/login');
@@ -47,13 +48,27 @@ describe('contract and administrator session', () => {
     const approve = http.expectOne('/api/v1/admin/tenants/ESHL/membership-applications/abc/approve'); expect(approve.request.body).toEqual({ reviewNotes: 'Checked' }); approve.flush({});
     TestBed.inject(AdminMembersService).updateStatus('member', 'Suspended').subscribe(); const status = http.expectOne('/api/v1/admin/tenants/ESHL/members/member/status'); expect(status.request.method).toBe('PUT'); expect(status.request.body).toEqual({ status: 'Suspended' }); status.flush({});
   });
-  it('sends the in-memory token only to the configured admin API', () => {
+  it('sends the session token only to the configured admin API', () => {
     login(); const client = TestBed.inject(HttpClient);
     for (const url of ['/api/v1/admin/tenants/ESHL/members', '/api/v1/public/eshlahleni/membership-applications', 'https://elsewhere.example/api/v1/admin/users']) {
       client.get(url).subscribe(); const request = http.expectOne(url);
       expect(request.request.headers.get('Authorization')).toBe(url.startsWith('/api/v1/admin/') ? 'Bearer test-token' : null); request.flush({});
     }
-    expect(localStorage.length).toBe(0); expect(sessionStorage.length).toBe(0);
+    expect(localStorage.length).toBe(0); expect(sessionStorage.getItem('eshlahleni.admin.session')).toBeTruthy();
+  });
+  it('restores the remaining session after refresh without extending its expiry', () => {
+    vi.useFakeTimers(); vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true); login(); vi.advanceTimersByTime(15 * 60_000);
+    const restored = TestBed.runInInjectionContext(() => new AuthService());
+    expect(restored.accessToken()).toBe('test-token');
+    vi.advanceTimersByTime(15 * 60_000 - 1); expect(restored.accessToken()).toBe('test-token');
+    vi.advanceTimersByTime(1); expect(restored.accessToken()).toBeNull(); expect(sessionStorage.getItem('eshlahleni.admin.session')).toBeNull();
+  });
+  it('discards malformed and expired stored sessions', () => {
+    sessionStorage.setItem('eshlahleni.admin.session', '{bad');
+    expect(TestBed.runInInjectionContext(() => new AuthService()).accessToken()).toBeNull();
+    sessionStorage.setItem('eshlahleni.admin.session', JSON.stringify({ token: 'old', expiresAt: Date.now() - 1 }));
+    expect(TestBed.runInInjectionContext(() => new AuthService()).accessToken()).toBeNull();
+    expect(sessionStorage.getItem('eshlahleni.admin.session')).toBeNull();
   });
   it('expires at thirty minutes and clears the token on a protected 401', () => {
     vi.useFakeTimers(); const auth = TestBed.inject(AuthService); vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);

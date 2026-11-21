@@ -117,8 +117,9 @@ test('real registration, membership approval, member edits and session guard', a
   expect((await completed.json()).status).toBe('Approved');
   const repeated = await request.post(`/api/v1/admin/tenants/ESHL/membership-applications/${applicationId}/approve`, { headers, data: {} });
   expect(repeated.status()).toBe(409);
-  expect(await page.evaluate(() => localStorage.length + sessionStorage.length)).toBe(0);
-  await page.reload(); await expect(page).toHaveURL(/\/admin\/login/);
+  expect(await page.evaluate(() => localStorage.length)).toBe(0);
+  await page.reload(); await expect(page).toHaveURL(/\/admin\/members/);
+  await expect(page.getByTestId('member-number')).toBeVisible();
 });
 
 test('administrator pagination, forbidden/missing records and expired sessions', async ({ page }) => {
