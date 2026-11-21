@@ -8,14 +8,15 @@ import { adminPassword } from '../../shared/admin-password';
 import { ApiError } from '../../shared/ui';
 
 @Component({ imports: [ReactiveFormsModule, ApiError], template: `
-  <div class="admin-page-heading"><div><span class="section-tag">MY ACCOUNT</span><h1>CHANGE PASSWORD.</h1></div></div>
-  <section class="panel"><app-api-error [issue]="issue()" /><form [formGroup]="form" (ngSubmit)="save()">
-    <label for="currentPassword">Current password</label><input id="currentPassword" type="password" autocomplete="current-password" formControlName="currentPassword" />
-    @if (issue()?.fields?.['currentPassword']; as errors) { <p class="field-error" role="alert">{{ errors[0] }}</p> }
-    <label for="newPassword">New password</label><input id="newPassword" type="password" autocomplete="new-password" formControlName="newPassword" />
-    <p>{{ guidance() }}</p>@if (issue()?.fields?.['password']; as errors) { <p class="field-error" role="alert">{{ errors[0] }}</p> }<label for="confirmPassword">Confirm new password</label><input id="confirmPassword" type="password" autocomplete="new-password" formControlName="confirmPassword" />
-    @if (form.controls.confirmPassword.touched && form.controls.confirmPassword.value !== form.controls.newPassword.value) { <p role="alert">Passwords do not match.</p> }
-    <button class="button" type="submit" [disabled]="saving()">Change password</button>
+  <div class="admin-page-heading admin-settings-heading"><div><span class="section-tag">MY ACCOUNT</span><h1>CHANGE PASSWORD.</h1></div></div>
+  <section class="panel admin-form-panel"><app-api-error [issue]="issue()" /><form class="admin-form" [formGroup]="form" (ngSubmit)="save()">
+    <div class="admin-form-field"><label for="currentPassword">Current password</label><input id="currentPassword" type="password" autocomplete="current-password" formControlName="currentPassword" />
+    @if (issue()?.fields?.['currentPassword']; as errors) { <p class="field-error" role="alert">{{ errors[0] }}</p> }</div>
+    <div class="admin-form-field"><label for="newPassword">New password</label><input id="newPassword" type="password" autocomplete="new-password" formControlName="newPassword" aria-describedby="passwordGuidance" />
+    <p id="passwordGuidance" class="admin-form-hint">{{ guidance() }}</p>@if (issue()?.fields?.['password']; as errors) { <p class="field-error" role="alert">{{ errors[0] }}</p> }</div>
+    <div class="admin-form-field"><label for="confirmPassword">Confirm new password</label><input id="confirmPassword" type="password" autocomplete="new-password" formControlName="confirmPassword" />
+    @if (form.controls.confirmPassword.touched && form.controls.confirmPassword.value !== form.controls.newPassword.value) { <p class="field-error" role="alert">Passwords do not match.</p> }</div>
+    <div class="admin-form-actions"><button class="button" type="submit" [disabled]="saving()">Change password</button></div>
   </form></section>` })
 export class AccountPage {
   private readonly api = inject(AdministratorsService); private readonly auth = inject(AuthService);
