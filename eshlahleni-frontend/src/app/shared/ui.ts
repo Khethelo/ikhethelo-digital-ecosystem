@@ -2,6 +2,7 @@ import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, EventEmi
 import { AbstractControl } from '@angular/forms';
 import { Pipe, PipeTransform } from '@angular/core';
 import { ApiIssue } from '../core/api-errors';
+import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-status',
@@ -17,12 +18,14 @@ export class LoadingState { @Input() text = 'Loading…'; }
 
 @Component({
   selector: 'app-api-error',
+  imports: [RouterLink],
   template: `@if (issue) {
     <div class="alert alert--error" role="alert" tabindex="-1">
       <strong>{{ issue.message }}</strong>
       @if (issue.retryAfter) { <p>Please wait at least {{ issue.retryAfter }} seconds before retrying.</p> }
       @for (message of generalErrors; track $index) { <p>{{ message }}</p> }
       @if (issue.traceId) { <small>Support reference: <span class="break-anywhere">{{ issue.traceId }}</span></small> }
+      @if (issue.existingApplicationId) { <p><a class="button" [routerLink]="['/admin/applications', issue.existingApplicationId]">Review Existing Application</a></p> }
       @if (canRetry) { <button class="text-button" type="button" (click)="retry.emit()">Try again <span aria-hidden="true">↻</span></button> }
     </div>
   }`,

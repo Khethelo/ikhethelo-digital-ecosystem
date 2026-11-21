@@ -51,12 +51,16 @@ public interface IMemberAdministration
 public interface IAdministratorAuthentication { Task<TokenResponse?> ExecuteAsync(LoginRequest request, CancellationToken ct); }
 public interface ITokenIssuer { TokenResponse Issue(AdminUser admin); }
 
-public sealed class RequestFailure(int status, string message, Dictionary<string, string[]>? errors = null) : Exception(message)
+public class RequestFailure(int status, string message, Dictionary<string, string[]>? errors = null) : Exception(message)
 {
     public int Status { get; } = status;
     public Dictionary<string, string[]>? Errors { get; } = errors;
     public static RequestFailure NotFound() => new(404, "The requested resource was not found.");
     public static RequestFailure Conflict() => new(409, "The request conflicts with existing data or current state.");
+}
+public sealed class PendingApplicationConflict(Guid applicationId) : RequestFailure(409, "A pending membership application already exists for this email address or phone number. Review the existing application instead.")
+{
+    public Guid ApplicationId { get; } = applicationId;
 }
 
 public static class Projection

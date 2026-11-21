@@ -22,6 +22,7 @@ export class AuthService {
   readonly role = signal<string | null>(null);
   readonly actorId = signal<string | null>(null);
   readonly sessionMessage = signal('');
+  readonly accessDeniedMessage = signal('');
   constructor() { inject(DestroyRef).onDestroy(() => clearTimeout(this.expiryTimer)); }
 
   login(request: LoginRequest) {
@@ -41,6 +42,7 @@ export class AuthService {
       } catch { this.role.set(null); this.actorId.set(null); }
       this.expiresAt.set(Date.now() + response.expiresIn * 1000);
       this.sessionMessage.set('');
+      this.accessDeniedMessage.set('');
       this.expiryTimer = setTimeout(() => this.logout(true), response.expiresIn * 1000);
     }));
   }
@@ -52,6 +54,7 @@ export class AuthService {
     ++this.revision;
     clearTimeout(this.expiryTimer);
     this.token.set(null); this.expiresAt.set(0); this.role.set(null); this.actorId.set(null);
+    this.accessDeniedMessage.set('');
     this.sessionMessage.set(expired ? 'Your session has ended. Please sign in again.' : 'You have signed out.');
     const current = this.router.url;
     const returnUrl = expired ? safeAdminReturnUrl(current) : '/admin';

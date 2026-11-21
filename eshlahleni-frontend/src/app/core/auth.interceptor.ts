@@ -12,7 +12,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const token = protectedApi ? auth.accessToken() : null;
   const outgoing = token ? request.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : request;
   return next(outgoing).pipe(catchError((error: unknown) => {
-    if (protectedApi && error instanceof HttpErrorResponse && error.status === 401 && auth.accessToken() === token) auth.logout(true);
+    if (protectedApi && token && error instanceof HttpErrorResponse && error.status === 401 && auth.accessToken() === token) auth.logout(true);
     return throwError(() => error);
   }));
 };

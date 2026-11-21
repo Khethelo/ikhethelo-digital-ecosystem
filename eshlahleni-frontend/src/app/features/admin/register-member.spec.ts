@@ -26,7 +26,7 @@ describe('walk-in registration', () => {
     p.another(); expect(p.result()).toBeNull();
   });
   it('shows a safe duplicate conflict', () => {
-    const p = page(); fill(p); register.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 409, error: { title: 'A pending membership application already exists for this email address or phone number. Review the existing application instead.' } })));
-    p.submit(); expect(p.issue()?.message).toContain('pending membership application'); expect(p.result()).toBeNull();
+    const p = page(); fill(p); const id = '7f111111-1111-4111-8111-111111111111'; register.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 409, error: { title: 'A pending membership application already exists for this email address or phone number. Review the existing application instead.', existingApplicationId: id } })));
+    p.submit(); expect(p.issue()?.message).toContain('pending membership application'); expect(p.issue()?.existingApplicationId).toBe(id); expect(p.form.value.email).toBe('jane@example.test'); expect(p.result()).toBeNull();
   });
 });

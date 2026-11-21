@@ -23,7 +23,7 @@ import { ApiError } from '../../shared/ui';
   .user-actions button:disabled { opacity: .5; cursor: not-allowed; }
 `], template: `
   <div class="admin-page-heading admin-settings-heading"><div><span class="section-tag">USER MANAGEMENT</span><h1>ADMINISTRATORS.</h1></div><button class="button" (click)="open('create')">Add administrator</button></div>
-  <app-api-error [issue]="issue()" /> @if (message()) { <p class="alert alert--success" role="status">{{ message() }}</p> }
+  <app-api-error [issue]="issue()" [canRetry]="!mode()" (retry)="load()" /> @if (message()) { <p class="alert alert--success" role="status">{{ message() }}</p> }
   @if (mode()) { <section class="panel admin-form-panel"><h2>{{ mode() === 'create' ? 'Add administrator' : mode() === 'edit' ? 'Edit administrator' : 'Reset password' }}</h2>
     <form class="admin-form" [formGroup]="form" (ngSubmit)="save()">
       @if (mode() !== 'reset') { <div class="admin-form-field"><label for="userEmail">Email</label><input id="userEmail" type="email" formControlName="email" /></div>
@@ -33,21 +33,23 @@ import { ApiError } from '../../shared/ui';
         @if (form.controls.confirmPassword.touched && form.controls.confirmPassword.value !== form.controls.password.value) { <p class="field-error" role="alert">Passwords do not match.</p> }</div> }
       <div class="admin-form-actions"><button class="button" type="submit" [disabled]="saving()">Save</button><button class="admin-form-cancel" type="button" (click)="close()" [disabled]="saving()">Cancel</button></div>
     </form></section> }
-  <section class="table-panel"><table class="responsive-table"><thead><tr><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+  @if (loading()) { <p role="status">Loading administrators…</p> }
+  @if (loaded()) { <section class="table-panel"><table class="responsive-table"><thead><tr><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead><tbody>
     @for (user of users(); track user.id) { <tr><td>{{ user.email }}</td><td>{{ user.role === 'TenantAdmin' ? 'Organisation Administrator' : 'Admin' }}</td><td>{{ user.isActive ? 'Active' : 'Inactive' }}</td><td><div class="user-actions">
       <button type="button" (click)="open('edit', user)" [attr.aria-label]="'Edit ' + user.email">Edit</button>
       <button type="button" (click)="open('reset', user)" [disabled]="user.id === auth.actorId()" [attr.aria-label]="'Reset password for ' + user.email">Reset password</button>
       <button type="button" [class.deactivate]="user.isActive" [class.activate]="!user.isActive" (click)="changeStatus(user)" [disabled]="user.id === auth.actorId() || saving()" [attr.aria-label]="(user.isActive ? 'Deactivate ' : 'Activate ') + user.email">{{ user.isActive ? 'Deactivate' : 'Activate' }}</button>
     </div></td></tr> } @empty { <tr><td colspan="4">No administrators to display.</td></tr> }
-  </tbody></table>@if (page() > 1) { <button class="text-button" (click)="load(page() - 1)">Previous</button> } @if (page() * 100 < total()) { <button class="text-button" (click)="load(page() + 1)">Next</button> }</section>` })
+  </tbody></table>@if (page() > 1) { <button class="text-button" (click)="load(page() - 1)">Previous</button> } @if (page() * 100 < total()) { <button class="text-button" (click)="load(page() + 1)">Next</button> }</section> }` })
 export class UsersPage {
   private readonly api = inject(AdministratorsService); readonly auth = inject(AuthService);
   readonly guidance = signal('Password requirements are checked by the service.'); readonly users = signal<Administrator[]>([]); readonly page = signal(1); readonly total = signal(0);
   readonly issue = signal<ApiIssue | null>(null); readonly message = signal(''); readonly saving = signal(false);
+  readonly loading = signal(false); readonly loaded = signal(false);
   readonly mode = signal<'create' | 'edit' | 'reset' | null>(null); readonly selected = signal<Administrator | null>(null);
   readonly form = inject(FormBuilder).nonNullable.group({ email: ['', [Validators.required, Validators.email]], role: ['TenantStaff', Validators.required], password: ['', adminPassword], confirmPassword: ['', Validators.required] });
   constructor() { this.load(); this.api.passwordPolicy().subscribe({ next: policy => this.guidance.set(policy.guidance), error: () => {} }); }
-  load(page = this.page()): void { this.api.list(page).subscribe({ next: result => { this.users.set(result.items); this.page.set(result.page); this.total.set(result.totalCount); }, error: error => this.issue.set(apiIssue(error)) }); }
+  load(page = this.page()): void { if (this.loading()) return; this.loading.set(true); this.loaded.set(false); this.issue.set(null); this.api.list(page).pipe(finalize(() => this.loading.set(false))).subscribe({ next: result => { this.users.set(result.items); this.page.set(result.page); this.total.set(result.totalCount); this.loaded.set(true); }, error: error => this.issue.set(apiIssue(error, 'users')) }); }
   open(mode: 'create' | 'edit' | 'reset', user: Administrator | null = null): void {
     this.mode.set(mode); this.selected.set(user); this.issue.set(null); this.message.set('');
     this.form.reset({ email: user?.email ?? '', role: user?.role ?? 'TenantStaff', password: '', confirmPassword: '' });
@@ -65,10 +67,11 @@ export class UsersPage {
     if (mode === 'create' && value.role === 'TenantAdmin' && !confirm('Grant Organisation Administrator access?')) return;
     this.saving.set(true); this.issue.set(null);
     const request: Observable<Administrator | void> = mode === 'create' ? this.api.create(value.email, value.password, value.role) : mode === 'edit' ? this.api.update(user!.id, value.email, value.role) : this.api.reset(user!.id, value.password);
-    request.pipe(finalize(() => this.saving.set(false))).subscribe({ next: () => { this.close(); if (mode === 'edit' && user?.id === this.auth.actorId()) { this.auth.logout(); return; } this.message.set('Administrator updated.'); this.load(); }, error: error => { this.issue.set(apiIssue(error)); this.form.controls.password.reset(); this.form.controls.confirmPassword.reset(); } });
+    request.pipe(finalize(() => this.saving.set(false))).subscribe({ next: () => { this.close(); if (mode === 'edit' && user?.id === this.auth.actorId()) { this.auth.logout(); return; } this.message.set('Administrator updated.'); this.load(); }, error: error => { this.issue.set(apiIssue(error, 'users')); } });
   }
   changeStatus(user: Administrator): void {
+    if (this.saving()) return;
     if (!confirm(`${user.isActive ? 'Deactivate' : 'Activate'} ${user.email}?`)) return;
-    this.saving.set(true); this.api.status(user.id, !user.isActive).pipe(finalize(() => this.saving.set(false))).subscribe({ next: () => { this.message.set('Administrator status updated.'); this.load(); }, error: error => this.issue.set(apiIssue(error)) });
+    this.saving.set(true); this.api.status(user.id, !user.isActive).pipe(finalize(() => this.saving.set(false))).subscribe({ next: () => { this.message.set('Administrator status updated.'); this.load(); }, error: error => this.issue.set(apiIssue(error, 'users')) });
   }
 }

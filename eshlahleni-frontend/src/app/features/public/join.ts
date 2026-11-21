@@ -11,6 +11,7 @@ import { SubmissionReceipt } from '../../core/api.models';
 import { PublicMembershipService } from '../../core/membership.services';
 import { ApiError, Field, StatusBadge } from '../../shared/ui';
 import { adultDate, ageInYears, canonicalPhone, emailAddress, johannesburgToday, trimmedName } from '../../shared/validation';
+import { RetryCooldown } from '../../shared/retry-cooldown';
 
 @Component({
   imports: [ReactiveFormsModule, RouterLink, Field, ApiError, StatusBadge, DatePipe],
@@ -52,7 +53,7 @@ import { adultDate, ageInYears, canonicalPhone, emailAddress, johannesburgToday,
               <div><label class="checkbox-line" for="termsAccepted"><input id="termsAccepted" type="checkbox" formControlName="termsAccepted" required aria-describedby="termsAccepted-error" [attr.aria-invalid]="invalid('termsAccepted')" /><span>I accept the <a routerLink="/membership-terms" target="_blank" rel="noopener">Club Membership Terms <span class="visually-hidden">(opens in a new tab)</span></a>. *</span></label>@if (invalid('termsAccepted')) { <small id="termsAccepted-error" class="field-error" role="alert">Please read and accept the membership terms.</small> }</div>
               <div><label class="checkbox-line" for="privacyConsent"><input id="privacyConsent" type="checkbox" formControlName="privacyConsent" required aria-describedby="privacyConsent-error" [attr.aria-invalid]="invalid('privacyConsent')" /><span>I consent to the processing of my personal information for membership registration, as described in the <a routerLink="/privacy" target="_blank" rel="noopener">Privacy Notice <span class="visually-hidden">(opens in a new tab)</span></a>. *</span></label>@if (invalid('privacyConsent')) { <small id="privacyConsent-error" class="field-error" role="alert">Your privacy consent is required to apply.</small> }</div>
             </div>
-            <button class="button button--full application-submit" type="submit" [disabled]="pending()">{{ pending() ? 'Submitting your application…' : 'Register for Membership' }} <span aria-hidden="true">↗</span></button>
+            <button class="button button--full application-submit" type="submit" [disabled]="pending() || cooldown.remaining() > 0">{{ pending() ? 'Submitting your application…' : 'Register for Membership' }} <span aria-hidden="true">↗</span></button>
             <p class="form-footnote">Your application will be reviewed by an administrator.</p>
           </form>
         </div>
@@ -71,6 +72,7 @@ export class JoinPage {
   private readonly fb = inject(FormBuilder).nonNullable;
   private readonly api = inject(PublicMembershipService);
   private readonly destroy = inject(DestroyRef);
+  readonly cooldown = new RetryCooldown(this.destroy);
   private readonly element: ElementRef<HTMLElement> = inject(ElementRef);
   readonly form = this.fb.group({
     firstName: ['', [Validators.required, trimmedName]], lastName: ['', [Validators.required, trimmedName]],
@@ -85,13 +87,13 @@ export class JoinPage {
   @ViewChild('receiptHeading') set receiptHeading(element: ElementRef<HTMLElement> | undefined) { element?.nativeElement.focus(); }
   invalid(name: keyof typeof this.form.controls): boolean { const control = this.form.controls[name]; return control.touched && control.invalid; }
   submit(): void {
-    if (this.pending()) return;
+    if (this.pending() || this.cooldown.remaining() > 0) return;
     this.issue.set(null); this.form.markAllAsTouched(); this.invalidAttempt.set(this.form.invalid);
     if (this.form.invalid) { this.element.nativeElement.querySelector<HTMLElement>('input.ng-invalid')?.focus(); return; }
     this.pending.set(true);
     this.api.submit(this.form.getRawValue()).pipe(takeUntilDestroyed(this.destroy), finalize(() => this.pending.set(false))).subscribe({
       next: receipt => { this.receipt.set(receipt); this.form.reset(); },
-      error: error => { const issue = apiIssue(error, 'application'); this.issue.set(issue); applyFieldErrors(this.form, issue); },
+      error: error => { const issue = apiIssue(error, 'application'); this.cooldown.start(issue.retryAfter); this.issue.set(issue); applyFieldErrors(this.form, issue); },
     });
   }
   async copyReference(): Promise<void> {

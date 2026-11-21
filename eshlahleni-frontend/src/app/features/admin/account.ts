@@ -29,7 +29,7 @@ export class AccountPage {
     this.saving.set(true); this.issue.set(null);
     this.api.changeOwn(v.currentPassword, v.newPassword, v.confirmPassword).pipe(finalize(() => this.saving.set(false))).subscribe({
       next: () => { this.form.reset(); this.auth.logout(); this.auth.sessionMessage.set('Your password was changed. Sign in again.'); },
-      error: error => { this.issue.set(apiIssue(error)); this.form.reset(); },
+      error: error => { this.issue.set(apiIssue(error, 'password')); },
     });
   }
 }

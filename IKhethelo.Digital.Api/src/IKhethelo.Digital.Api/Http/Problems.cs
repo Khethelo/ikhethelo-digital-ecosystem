@@ -50,7 +50,15 @@ public sealed class ErrorMiddleware(RequestDelegate next, ILogger<ErrorMiddlewar
                 string.Join(" <- ", new System.Diagnostics.StackTrace(exception, false).GetFrames().Take(20).Select(frame =>
                     $"{frame.GetMethod()?.DeclaringType?.FullName}.{frame.GetMethod()?.Name}")));
             // Do not log raw exception objects: provider details may contain SQL or applicant PII.
-            await Problems.WriteAsync(context, status, failure?.Message, failure?.Errors);
+            if (failure is PendingApplicationConflict pending && context.User.Identity?.IsAuthenticated == true &&
+                HttpMethods.IsPost(context.Request.Method) && string.Equals(context.Request.Path.Value?.TrimEnd('/'), "/api/v1/admin/tenants/ESHL/members", StringComparison.OrdinalIgnoreCase))
+            {
+                var problem = Problems.Create(context, status, failure.Message, failure.Errors);
+                problem.Extensions["existingApplicationId"] = pending.ApplicationId;
+                context.Response.StatusCode = status;
+                await context.Response.WriteAsJsonAsync((object)problem, options: null, contentType: "application/problem+json", cancellationToken: context.RequestAborted);
+            }
+            else await Problems.WriteAsync(context, status, status < 500 ? failure?.Message : null, status < 500 ? failure?.Errors : null);
         }
     }
 }

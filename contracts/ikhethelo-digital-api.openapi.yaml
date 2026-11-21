@@ -273,7 +273,7 @@ paths:
       operationId: registerMember
       tags: [Members]
       summary: Register a walk-in member with consent
-      description: TenantAdmin and ESHL TenantStaff may register in their authorized tenant. Creates an approved internal application and active member with a server-generated number; audits commit in the same transaction, and confirmation email is attempted after commit. Existing pending applications must use approval instead. Duplicate pending applications and active members return 409.
+      description: TenantAdmin and ESHL TenantStaff may register in their authorized tenant. Creates an approved internal application and active member with a server-generated number; audits commit in the same transaction, and confirmation email is attempted after commit. Existing pending applications must use approval instead. Duplicate pending applications and active members return 409. Only this authenticated ESHL operation can include existingApplicationId for a matching pending application in the same tenant.
       requestBody:
         required: true
         content:
@@ -289,7 +289,16 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
-        '409': {$ref: '#/components/responses/Conflict'}
+        '409':
+          description: Pending application or active member conflict. Same-tenant ESHL pending conflicts include existingApplicationId; database race conflicts can remain generic.
+          content:
+            application/problem+json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ProblemDetails'
+                  - type: object
+                    properties:
+                      existingApplicationId: {type: string, format: uuid}
         '413': {$ref: '#/components/responses/TooLarge'}
         '415': {$ref: '#/components/responses/UnsupportedMedia'}
         '422': {$ref: '#/components/responses/ValidationFailed'}

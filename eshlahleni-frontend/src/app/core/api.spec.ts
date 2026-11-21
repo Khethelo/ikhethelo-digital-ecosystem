@@ -7,6 +7,7 @@ import { AdminApplicationsService, AdminMembersService, PublicMembershipService 
 import { AuthService, safeAdminReturnUrl } from './auth.service';
 import { authInterceptor } from './auth.interceptor';
 import { AdministratorsService } from './administrators.service';
+import { organisationAdminGuard } from './auth.guard';
 
 describe('contract and administrator session', () => {
   let http: HttpTestingController;
@@ -63,6 +64,11 @@ describe('contract and administrator session', () => {
     expect(safeAdminReturnUrl('//evil.example')).toBe('/admin');
     expect(safeAdminReturnUrl('/admin/login')).toBe('/admin');
     expect(safeAdminReturnUrl('/admin/members?page=2')).toBe('/admin/members?page=2');
+  });
+  it('explains why staff cannot access administrator management', () => {
+    const auth = TestBed.inject(AuthService); auth.role.set('TenantStaff');
+    const result = TestBed.runInInjectionContext(() => organisationAdminGuard({} as any, {} as any));
+    expect(result).not.toBe(true); expect(auth.accessDeniedMessage()).toContain('permission');
   });
   it('sends authenticated and tenant-scoped administrator operations without changing passwords', () => {
     login(); const api = TestBed.inject(AdministratorsService);

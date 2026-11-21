@@ -312,8 +312,21 @@ public sealed class AdministrationTests(ApiFixture fixture)
         var submitted = await fixture.Client.PostAsJsonAsync("/api/v1/public/eshlahleni/membership-applications",
             new ApplicationSubmission(request.FirstName, request.LastName, request.DateOfBirth, request.PhoneNumber, request.Email, true, true));
         Assert.Equal(HttpStatusCode.Created, submitted.StatusCode);
-        Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync(Tenant + "/members", request)).StatusCode);
+        var pendingId = (await Json(submitted)).GetProperty("applicationId").GetGuid();
+        var emailConflict = await client.PostAsJsonAsync(Tenant + "/members", request with { PhoneNumber = Member().PhoneNumber });
+        Assert.Equal(HttpStatusCode.Conflict, emailConflict.StatusCode);
+        Assert.Equal(pendingId, (await Json(emailConflict)).GetProperty("existingApplicationId").GetGuid());
+        var phoneConflict = await client.PostAsJsonAsync(Tenant + "/members", request with { Email = Email() });
+        Assert.Equal(HttpStatusCode.Conflict, phoneConflict.StatusCode);
+        Assert.Equal(pendingId, (await Json(phoneConflict)).GetProperty("existingApplicationId").GetGuid());
+        var publicConflict = await fixture.Client.PostAsJsonAsync("/api/v1/public/eshlahleni/membership-applications",
+            new ApplicationSubmission(request.FirstName, request.LastName, request.DateOfBirth, request.PhoneNumber, request.Email, true, true));
+        Assert.Equal(HttpStatusCode.Conflict, publicConflict.StatusCode);
+        Assert.False((await Json(publicConflict)).TryGetProperty("existingApplicationId", out _));
+        using var other = await Auth("second@example.com");
+        Assert.Equal(HttpStatusCode.Forbidden, (await other.PostAsJsonAsync(Tenant + "/members", request)).StatusCode);
         await using var db = fixture.Db(); Assert.False(await db.Members.AnyAsync(x => x.Email == request.Email));
+        Assert.Equal(1, await db.Applications.CountAsync(x => x.Email == request.Email));
         var fresh = Member(); Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync(Tenant + "/members", fresh)).StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync(Tenant + "/members", fresh)).StatusCode);
     }

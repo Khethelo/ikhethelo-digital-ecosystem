@@ -8,5 +8,9 @@ export const authGuard: CanActivateFn = (_route, state) => {
   });
 };
 export const adminChildGuard: CanActivateChildFn = (route, state) => authGuard(route, state);
-export const organisationAdminGuard: CanActivateFn = () =>
-  inject(AuthService).role() === 'TenantAdmin' ? true : inject(Router).createUrlTree(['/admin']);
+export const organisationAdminGuard: CanActivateFn = () => {
+  const auth = inject(AuthService); const router = inject(Router);
+  if (auth.role() === 'TenantAdmin') return true;
+  auth.accessDeniedMessage.set('You don’t have permission to access User Management.');
+  return router.createUrlTree(['/admin']);
+};

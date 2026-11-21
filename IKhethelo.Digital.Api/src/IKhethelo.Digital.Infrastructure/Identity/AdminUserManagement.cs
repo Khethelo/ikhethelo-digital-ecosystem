@@ -23,7 +23,7 @@ public sealed class AdminUserManagement(DigitalDbContext db, ITenantContext cont
     private async Task<AdminUser> FindAsync(Guid id, CancellationToken ct) => await Users.SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw RequestFailure.NotFound();
     private async Task UniqueEmailAsync(string normalized, Guid? id, CancellationToken ct)
     {
-        if (await db.AdminUsers.AnyAsync(x => x.NormalizedEmail == normalized && x.Id != id, ct)) throw RequestFailure.Conflict();
+        if (await db.AdminUsers.AnyAsync(x => x.NormalizedEmail == normalized && x.Id != id, ct)) throw new RequestFailure(409, "An administrator already uses this email address.");
     }
     public async Task<AdminResponse> CreateAsync(AdminCreate request, CancellationToken ct)
     {
@@ -61,7 +61,7 @@ public sealed class AdminUserManagement(DigitalDbContext db, ITenantContext cont
         var admin = await FindAsync(id, ct); var normalized = Validation.NormalizeEmail(request.Email!);
         var newRole = Enum.Parse<AdminRole>(request.Role!);
         if (admin.IsActive && admin.Role == AdminRole.TenantAdmin && newRole != AdminRole.TenantAdmin && await ActiveTenantAdmins(ct) <= 1)
-            throw RequestFailure.Conflict();
+            throw new RequestFailure(409, "You cannot deactivate or demote the last active Organisation Administrator.");
         var oldRole = admin.Role;
         await UniqueEmailAsync(normalized, id, ct);
         var email = request.Email!.Trim(); var now = clock.GetUtcNow();
@@ -82,8 +82,10 @@ public sealed class AdminUserManagement(DigitalDbContext db, ITenantContext cont
         if (request.IsActive is null) throw new RequestFailure(422, "isActive is required.", new() { ["isActive"] = ["Choose true or false."] });
         await using var transaction = await db.Database.BeginTransactionAsync(ct); await LockTenantAsync(ct);
         var admin = await FindAsync(id, ct);
-        if (!request.IsActive.Value && (id == Access.ActorId || (admin.IsActive && admin.Role == AdminRole.TenantAdmin && await ActiveTenantAdmins(ct) <= 1)))
-            throw RequestFailure.Conflict();
+        if (!request.IsActive.Value && id == Access.ActorId)
+            throw new RequestFailure(409, "You cannot deactivate your own account.");
+        if (!request.IsActive.Value && admin.IsActive && admin.Role == AdminRole.TenantAdmin && await ActiveTenantAdmins(ct) <= 1)
+            throw new RequestFailure(409, "You cannot deactivate or demote the last active Organisation Administrator.");
         var previous = admin.IsActive;
         if (previous != request.IsActive.Value) { admin.IsActive = request.IsActive.Value; admin.SecurityVersion++; admin.UpdatedAtUtc = clock.GetUtcNow(); }
         audit.Add("SetAdministratorStatus", "AdminUser", id, new { previousIsActive = previous, isActive = admin.IsActive });

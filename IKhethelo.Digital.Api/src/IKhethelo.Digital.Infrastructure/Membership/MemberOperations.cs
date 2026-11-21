@@ -29,9 +29,13 @@ public sealed class MemberOperations(DigitalDbContext db, TenantData data, Audit
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         var category = await AvailableCategoryAsync(request.CategoryId, ct);
         var email = request.Email!.Trim(); var normalized = Validation.NormalizeEmail(email);
-        if (await data.Applications.AnyAsync(x => x.Status == MembershipApplicationStatus.Pending &&
-            (x.NormalizedEmail == normalized || x.NormalizedPhoneNumber == request.PhoneNumber), ct))
-            throw new RequestFailure(409, "A pending membership application already exists for this email address or phone number. Review the existing application instead.");
+        var pendingId = await data.Applications.Where(x => x.Status == MembershipApplicationStatus.Pending &&
+            (x.NormalizedEmail == normalized || x.NormalizedPhoneNumber == request.PhoneNumber)).Select(x => (Guid?)x.Id).FirstOrDefaultAsync(ct);
+        if (pendingId is { } id)
+        {
+            if (data.Access.TenantCode == "ESHL") throw new PendingApplicationConflict(id);
+            throw RequestFailure.Conflict();
+        }
         if (await data.Members.AnyAsync(x => x.Status == MemberStatus.Active &&
             (x.NormalizedEmail == normalized || x.NormalizedPhoneNumber == request.PhoneNumber), ct))
             throw new RequestFailure(409, "An active member already exists with this email address or phone number.");

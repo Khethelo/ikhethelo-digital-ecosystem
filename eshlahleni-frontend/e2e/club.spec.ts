@@ -6,6 +6,26 @@ async function fillApplication(page: Page, name = 'Naledi', email = 'naledi@exam
   await page.locator('#dateOfBirth').fill('1995-06-15'); await page.locator('#phoneNumber').fill(phone);
   await page.locator('#email').fill(email); await page.locator('#termsAccepted').check(); await page.locator('#privacyConsent').check();
 }
+test('walk-in conflict links to the existing pending application', async ({ page }) => {
+  test.skip(!process.env['ESHL_E2E_EMAIL'], 'Run with the disposable database harness.');
+  const email = `pending-${Date.now()}@example.test`;
+  await page.goto('/join'); await fillApplication(page, 'Pending', email, '+27' + String(Date.now()).slice(-9));
+  await page.getByRole('button', { name: 'Register for Membership' }).click();
+  const reference = page.getByTestId('application-reference'); await expect(reference).toBeVisible();
+  const id = (await reference.textContent())!.trim();
+  await page.goto('/admin/login'); await page.locator('input#adminEmail').fill(process.env['ESHL_E2E_EMAIL']!);
+  await page.locator('input#adminPassword').fill(process.env['ESHL_E2E_PASSWORD']!);
+  await page.getByRole('button', { name: 'Sign in', exact: false }).click();
+  await page.getByRole('link', { name: '+ Register Member' }).click();
+  await page.locator('#firstName').fill('Pending'); await page.locator('#lastName').fill('Member');
+  await page.locator('#dateOfBirth').fill('1990-01-01'); await page.locator('#phoneNumber').fill('+27821234567'); await page.locator('#email').fill(email);
+  await page.getByLabel('Member accepted the membership terms').check(); await page.getByLabel('Member provided privacy consent').check();
+  await page.getByRole('button', { name: 'Register Member' }).click();
+  await expect(page.getByText('A pending membership application already exists', { exact: false })).toBeVisible();
+  await expect(page.locator('#email')).toHaveValue(email);
+  await page.getByRole('link', { name: 'Review Existing Application' }).click();
+  await expect(page).toHaveURL(new RegExp(`/admin/applications/${id}$`));
+});
 test('walk-in registration creates an active member on mobile', async ({ page }) => {
   test.skip(!process.env['ESHL_E2E_EMAIL'], 'Run with the disposable database harness.');
   await page.setViewportSize({ width: 390, height: 844 });
@@ -47,7 +67,7 @@ test('public site, mobile navigation, eligibility and recoverable API errors', a
   await expect(page.getByText('A registration may already exist', { exact: false })).toBeVisible();
   await page.unroute('**/api/v1/public/**');
   await page.route('**/api/v1/public/**', route => route.fulfill({ status: 422, json: { status: 422, errors: { email: ['Please use another email address.'] } } }));
-  await page.getByRole('button', { name: 'Register for Membership' }).click(); await expect(page.getByText('Please use another email address.')).toBeVisible();
+  await page.getByRole('button', { name: 'Register for Membership' }).click(); await expect(page.getByText('Enter a valid email address.')).toBeVisible();
   await page.screenshot({ path: 'test-results/screenshots/join-mobile.png', fullPage: true });
 });
 
