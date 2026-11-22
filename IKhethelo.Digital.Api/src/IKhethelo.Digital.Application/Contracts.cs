@@ -62,6 +62,10 @@ public sealed class PendingApplicationConflict(Guid applicationId) : RequestFail
 {
     public Guid ApplicationId { get; } = applicationId;
 }
+public sealed class ActiveMemberConflict(Guid memberId) : RequestFailure(409, "An active member already exists with this email address or phone number.")
+{
+    public Guid MemberId { get; } = memberId;
+}
 
 public static class Projection
 {

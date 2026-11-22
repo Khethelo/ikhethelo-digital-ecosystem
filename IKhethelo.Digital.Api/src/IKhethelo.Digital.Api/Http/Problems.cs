@@ -50,11 +50,12 @@ public sealed class ErrorMiddleware(RequestDelegate next, ILogger<ErrorMiddlewar
                 string.Join(" <- ", new System.Diagnostics.StackTrace(exception, false).GetFrames().Take(20).Select(frame =>
                     $"{frame.GetMethod()?.DeclaringType?.FullName}.{frame.GetMethod()?.Name}")));
             // Do not log raw exception objects: provider details may contain SQL or applicant PII.
-            if (failure is PendingApplicationConflict pending && context.User.Identity?.IsAuthenticated == true &&
+            if (failure is PendingApplicationConflict or ActiveMemberConflict && context.User.Identity?.IsAuthenticated == true &&
                 HttpMethods.IsPost(context.Request.Method) && string.Equals(context.Request.Path.Value?.TrimEnd('/'), "/api/v1/admin/tenants/ESHL/members", StringComparison.OrdinalIgnoreCase))
             {
                 var problem = Problems.Create(context, status, failure.Message, failure.Errors);
-                problem.Extensions["existingApplicationId"] = pending.ApplicationId;
+                if (failure is PendingApplicationConflict pending) problem.Extensions["existingApplicationId"] = pending.ApplicationId;
+                if (failure is ActiveMemberConflict active) problem.Extensions["existingMemberId"] = active.MemberId;
                 context.Response.StatusCode = status;
                 await context.Response.WriteAsJsonAsync((object)problem, options: null, contentType: "application/problem+json", cancellationToken: context.RequestAborted);
             }

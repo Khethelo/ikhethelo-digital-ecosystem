@@ -36,9 +36,13 @@ public sealed class MemberOperations(DigitalDbContext db, TenantData data, Audit
             if (data.Access.TenantCode == "ESHL") throw new PendingApplicationConflict(id);
             throw RequestFailure.Conflict();
         }
-        if (await data.Members.AnyAsync(x => x.Status == MemberStatus.Active &&
-            (x.NormalizedEmail == normalized || x.NormalizedPhoneNumber == request.PhoneNumber), ct))
+        var activeId = await data.Members.Where(x => x.Status == MemberStatus.Active &&
+            (x.NormalizedEmail == normalized || x.NormalizedPhoneNumber == request.PhoneNumber)).Select(x => (Guid?)x.Id).FirstOrDefaultAsync(ct);
+        if (activeId is { } memberId)
+        {
+            if (data.Access.TenantCode == "ESHL") throw new ActiveMemberConflict(memberId);
             throw new RequestFailure(409, "An active member already exists with this email address or phone number.");
+        }
         var now = clock.GetUtcNow(); var actor = data.Access.ActorId ?? throw new RequestFailure(403, "Administrator access is required.");
         var application = new MembershipApplication { Id = Guid.NewGuid(), TenantId = data.Access.TenantId,
             FirstName = request.FirstName!.Trim(), LastName = request.LastName!.Trim(), DateOfBirth = request.DateOfBirth!.Value,

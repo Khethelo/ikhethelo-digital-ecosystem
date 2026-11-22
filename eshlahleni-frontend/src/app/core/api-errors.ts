@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { FormGroup } from '@angular/forms';
 import { ProblemDetails } from './api.models';
 
-export interface ApiIssue { status: number; message: string; traceId?: string; retryAfter?: number; existingApplicationId?: string; fields: Record<string, string[]>; }
+export interface ApiIssue { status: number; message: string; traceId?: string; retryAfter?: number; existingApplicationId?: string; existingMemberId?: string; fields: Record<string, string[]>; }
 export function apiIssue(error: unknown, context: 'application' | 'login' | 'review' | 'member' | 'registration' | 'users' | 'password' | 'read' = 'read'): ApiIssue {
   const response = error instanceof HttpErrorResponse ? error : null;
   const status = response?.status ?? 0;
@@ -52,6 +52,8 @@ export function apiIssue(error: unknown, context: 'application' | 'login' | 'rev
     retryAfter: status === 429 && Number.isFinite(delay) && delay > 0 ? Math.ceil(delay) : undefined,
     existingApplicationId: context === 'registration' && status === 409 && problem.title === 'A pending membership application already exists for this email address or phone number. Review the existing application instead.' &&
       typeof problem.existingApplicationId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(problem.existingApplicationId) ? problem.existingApplicationId : undefined,
+    existingMemberId: context === 'registration' && status === 409 && problem.title === 'An active member already exists with this email address or phone number.' &&
+      typeof problem.existingMemberId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(problem.existingMemberId) ? problem.existingMemberId : undefined,
   };
 }
 export function applyFieldErrors(form: FormGroup, issue: ApiIssue): void {

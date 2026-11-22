@@ -41,4 +41,15 @@ describe('safe actionable API errors', () => {
     expect(link.textContent).toContain('Review Existing Application');
     expect(link.getAttribute('href')).toBe('/admin/applications/7f111111-1111-4111-8111-111111111111');
   });
+  it('renders a member link only for a validated registration conflict', async () => {
+    const id = '7f222222-2222-4222-8222-222222222222';
+    const title = 'An active member already exists with this email address or phone number.';
+    const issue = apiIssue(new HttpErrorResponse({ status: 409, error: { title, existingMemberId: id } }), 'registration');
+    expect(issue.existingMemberId).toBe(id);
+    expect(apiIssue(new HttpErrorResponse({ status: 409, error: { title, existingMemberId: '../users' } }), 'registration').existingMemberId).toBeUndefined();
+    TestBed.configureTestingModule({ imports: [ApiError], providers: [provideRouter([])] });
+    const fixture = TestBed.createComponent(ApiError); fixture.componentInstance.issue = issue;
+    fixture.detectChanges(); await fixture.whenStable(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('a').getAttribute('href')).toBe('/admin/members/' + id);
+  });
 });

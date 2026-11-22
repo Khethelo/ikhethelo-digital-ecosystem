@@ -290,7 +290,7 @@ paths:
         '403': {$ref: '#/components/responses/Forbidden'}
         '404': {$ref: '#/components/responses/NotFound'}
         '409':
-          description: Pending application or active member conflict. Same-tenant ESHL pending conflicts include existingApplicationId; database race conflicts can remain generic.
+          description: Pending application or active member conflict. Same-tenant ESHL conflicts include existingApplicationId or existingMemberId; database race conflicts can remain generic.
           content:
             application/problem+json:
               schema:
@@ -299,6 +299,7 @@ paths:
                   - type: object
                     properties:
                       existingApplicationId: {type: string, format: uuid}
+                      existingMemberId: {type: string, format: uuid}
         '413': {$ref: '#/components/responses/TooLarge'}
         '415': {$ref: '#/components/responses/UnsupportedMedia'}
         '422': {$ref: '#/components/responses/ValidationFailed'}

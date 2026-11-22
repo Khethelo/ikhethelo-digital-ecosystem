@@ -327,8 +327,24 @@ public sealed class AdministrationTests(ApiFixture fixture)
         Assert.Equal(HttpStatusCode.Forbidden, (await other.PostAsJsonAsync(Tenant + "/members", request)).StatusCode);
         await using var db = fixture.Db(); Assert.False(await db.Members.AnyAsync(x => x.Email == request.Email));
         Assert.Equal(1, await db.Applications.CountAsync(x => x.Email == request.Email));
-        var fresh = Member(); Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync(Tenant + "/members", fresh)).StatusCode);
-        Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync(Tenant + "/members", fresh)).StatusCode);
+        var fresh = Member(); var created = await client.PostAsJsonAsync(Tenant + "/members", fresh); Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var memberId = (await Json(created)).GetProperty("memberId").GetGuid();
+        foreach (var duplicate in new[] { fresh with { PhoneNumber = Member().PhoneNumber }, fresh with { Email = Email() } })
+        {
+            var conflict = await client.PostAsJsonAsync(Tenant + "/members", duplicate);
+            Assert.Equal(HttpStatusCode.Conflict, conflict.StatusCode);
+            Assert.Equal("application/problem+json", conflict.Content.Headers.ContentType?.MediaType);
+            var problem = await Json(conflict);
+            Assert.Equal("An active member already exists with this email address or phone number.", problem.GetProperty("title").GetString());
+            Assert.Equal(memberId, problem.GetProperty("existingMemberId").GetGuid());
+            Assert.False(problem.TryGetProperty("stackTrace", out _));
+        }
+        var publicDuplicate = await fixture.Client.PostAsJsonAsync("/api/v1/public/eshlahleni/membership-applications", new ApplicationSubmission(fresh.FirstName, fresh.LastName, fresh.DateOfBirth, fresh.PhoneNumber, fresh.Email, true, true));
+        Assert.Equal(HttpStatusCode.Conflict, publicDuplicate.StatusCode);
+        Assert.False((await Json(publicDuplicate)).TryGetProperty("existingMemberId", out _));
+        Assert.Equal(1, await db.Members.CountAsync(x => x.Email == fresh.Email));
+        Assert.Equal(1, await db.Applications.CountAsync(x => x.Email == fresh.Email));
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(Tenant + "/members/" + memberId)).StatusCode);
     }
     [Fact]
     public async Task RequiredAuditFailureRollsBackAdministratorAndMemberCreation()

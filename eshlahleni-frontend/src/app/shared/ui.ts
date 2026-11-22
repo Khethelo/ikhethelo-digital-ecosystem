@@ -26,6 +26,7 @@ export class LoadingState { @Input() text = 'Loading…'; }
       @for (message of generalErrors; track $index) { <p>{{ message }}</p> }
       @if (issue.traceId) { <small>Support reference: <span class="break-anywhere">{{ issue.traceId }}</span></small> }
       @if (issue.existingApplicationId) { <p><a class="button" [routerLink]="['/admin/applications', issue.existingApplicationId]">Review Existing Application</a></p> }
+      @if (issue.existingMemberId) { <p><a class="button" [routerLink]="['/admin/members', issue.existingMemberId]">View Existing Member</a></p> }
       @if (canRetry) { <button class="text-button" type="button" (click)="retry.emit()">Try again <span aria-hidden="true">↻</span></button> }
     </div>
   }`,

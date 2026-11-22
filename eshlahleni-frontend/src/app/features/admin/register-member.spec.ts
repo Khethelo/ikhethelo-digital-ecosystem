@@ -29,4 +29,10 @@ describe('walk-in registration', () => {
     const p = page(); fill(p); const id = '7f111111-1111-4111-8111-111111111111'; register.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 409, error: { title: 'A pending membership application already exists for this email address or phone number. Review the existing application instead.', existingApplicationId: id } })));
     p.submit(); expect(p.issue()?.message).toContain('pending membership application'); expect(p.issue()?.existingApplicationId).toBe(id); expect(p.form.value.email).toBe('jane@example.test'); expect(p.result()).toBeNull();
   });
+  it('preserves the form and offers the existing active member after a conflict', () => {
+    const p = page(); fill(p); const id = '7f222222-2222-4222-8222-222222222222';
+    register.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 409, error: { title: 'An active member already exists with this email address or phone number.', existingMemberId: id } })));
+    p.submit(); expect(p.issue()?.existingMemberId).toBe(id); expect(p.issue()?.message).toContain('active member already exists');
+    expect(p.form.value.email).toBe('jane@example.test'); expect(p.saving()).toBe(false); expect(p.result()).toBeNull();
+  });
 });
