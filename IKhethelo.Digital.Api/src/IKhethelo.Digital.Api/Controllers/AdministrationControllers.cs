@@ -1,4 +1,5 @@
 using IKhethelo.Digital.Application;
+using IKhethelo.Digital.Api.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -39,7 +40,14 @@ public sealed class MemberOperationsController(IMemberOperations operations) : C
     public async Task<IActionResult> Register(MemberRegistration request, CancellationToken ct)
     {
         var result = await operations.RegisterAsync(request, ct);
-        return Created($"/api/v1/admin/tenants/{Uri.EscapeDataString((string)RouteData.Values["tenantCode"]!)}/members/{result.MemberId}", result);
+        if (result.ExistingMemberId is { } memberId)
+        {
+            var problem = Problems.Create(HttpContext, 409, "An active member already exists with this email address or phone number.");
+            problem.Extensions["existingMemberId"] = memberId;
+            return new ObjectResult(problem) { StatusCode = 409, ContentTypes = { "application/problem+json" } };
+        }
+        var member = result.Member!;
+        return Created($"/api/v1/admin/tenants/{Uri.EscapeDataString((string)RouteData.Values["tenantCode"]!)}/members/{member.MemberId}", member);
     }
     [HttpGet("members/{memberId}/category")]
     public async Task<IActionResult> Category(string memberId, CancellationToken ct) => Ok(await operations.CategoryAsync(ResourceId.Parse(memberId), ct));

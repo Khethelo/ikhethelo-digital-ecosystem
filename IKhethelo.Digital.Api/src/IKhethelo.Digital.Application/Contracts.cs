@@ -28,7 +28,7 @@ public sealed record TenantAccess(Guid TenantId, string TenantCode, Guid? ActorI
 public interface ITenantContext { TenantAccess Current { get; } }
 public interface ISubmitMembershipApplication
 {
-    Task<SubmissionReceipt> ExecuteAsync(ApplicationSubmission request, CancellationToken ct);
+    Task<SubmissionReceipt?> ExecuteAsync(ApplicationSubmission request, CancellationToken ct);
 }
 public interface IMembershipQueries
 {

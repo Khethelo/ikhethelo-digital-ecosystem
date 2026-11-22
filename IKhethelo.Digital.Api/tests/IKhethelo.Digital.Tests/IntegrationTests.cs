@@ -134,6 +134,25 @@ public sealed class IntegrationTests(ApiFixture fixture)
         await SubmitAsync(submission, "/api/v1/public/second/membership-applications");
     }
     [Fact]
+    public async Task PublicActiveMemberDuplicatesReturnPrivateConflictAndDoNotInterruptSubmissions()
+    {
+        var submission = Submission();
+        var applicationId = await SubmitAsync(submission);
+        using var admin = await AuthAsync();
+        Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync($"{Admin}/membership-applications/{applicationId}/activate", new { })).StatusCode);
+        foreach (var duplicate in new[] { Submission() with { Email = submission.Email!.ToUpperInvariant() }, Submission() with { PhoneNumber = submission.PhoneNumber } })
+        {
+            var response = await fixture.Client.PostAsJsonAsync(Public, duplicate);
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+            Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+            var problem = await JsonAsync(response);
+            Assert.Equal("The request conflicts with existing data or current state.", problem.GetProperty("title").GetString());
+            Assert.False(problem.TryGetProperty("existingMemberId", out _));
+            Assert.False(problem.TryGetProperty("existingApplicationId", out _));
+        }
+        await SubmitAsync();
+    }
+    [Fact]
     public async Task DuplicateSubmissionRaceCreatesOneApplication()
     {
         var submission = Submission();

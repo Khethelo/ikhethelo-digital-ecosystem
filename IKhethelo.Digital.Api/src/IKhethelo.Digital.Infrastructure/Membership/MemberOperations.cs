@@ -22,7 +22,7 @@ public sealed class MemberOperations(DigitalDbContext db, TenantData data, Audit
         if (!category.IsActive) throw new RequestFailure(422, "Choose an active membership category.", new() { ["categoryId"] = ["The category is inactive."] });
         return category;
     }
-    public async Task<MemberRegistrationResponse> RegisterAsync(MemberRegistration request, CancellationToken ct)
+    public async Task<MemberRegistrationResult> RegisterAsync(MemberRegistration request, CancellationToken ct)
     {
         Validation.Submission(new(request.FirstName, request.LastName, request.DateOfBirth, request.PhoneNumber,
             request.Email, request.TermsAccepted, request.PrivacyConsent), Validation.LocalDate(clock), rules.For(data.Access.TenantCode).RequireAdult);
@@ -40,7 +40,7 @@ public sealed class MemberOperations(DigitalDbContext db, TenantData data, Audit
             (x.NormalizedEmail == normalized || x.NormalizedPhoneNumber == request.PhoneNumber)).Select(x => (Guid?)x.Id).FirstOrDefaultAsync(ct);
         if (activeId is { } memberId)
         {
-            if (data.Access.TenantCode == "ESHL") throw new ActiveMemberConflict(memberId);
+            if (data.Access.TenantCode == "ESHL") return new(null, memberId);
             throw new RequestFailure(409, "An active member already exists with this email address or phone number.");
         }
         var now = clock.GetUtcNow(); var actor = data.Access.ActorId ?? throw new RequestFailure(403, "Administrator access is required.");
@@ -62,7 +62,7 @@ public sealed class MemberOperations(DigitalDbContext db, TenantData data, Audit
         audit.Add("MembershipActivated", "MembershipApplication", application.Id);
         await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct);
         var emailSent = await emails.ActivatedAsync(member.Email, member.FirstName, member.MemberNumber);
-        return new(member.Response(), emailSent);
+        return new(new(member.Response(), emailSent), null);
     }
     private static CategoryResponse Response(MembershipCategory category) => new(category.Id, category.Name, category.IsActive);
     private static string CategoryName(CategoryWrite request)

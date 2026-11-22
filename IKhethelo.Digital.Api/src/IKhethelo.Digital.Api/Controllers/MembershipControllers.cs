@@ -11,7 +11,13 @@ namespace IKhethelo.Digital.Api.Controllers;
 public sealed class SubmissionController(ISubmitMembershipApplication submit) : ControllerBase
 {
     [HttpPost, AllowAnonymous, EnableRateLimiting("PublicSubmission")]
-    public async Task<IActionResult> Submit(ApplicationSubmission request, CancellationToken ct) => StatusCode(201, await submit.ExecuteAsync(request, ct));
+    public async Task<IActionResult> Submit(ApplicationSubmission request, CancellationToken ct)
+    {
+        var receipt = await submit.ExecuteAsync(request, ct);
+        if (receipt is not null) return StatusCode(201, receipt);
+        var problem = Problems.Create(HttpContext, 409, "The request conflicts with existing data or current state.");
+        return new ObjectResult(problem) { StatusCode = 409, ContentTypes = { "application/problem+json" } };
+    }
 }
 
 [ApiController]

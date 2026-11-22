@@ -23,6 +23,7 @@ public interface IAdminUserManagement
 
 public sealed record MemberRegistration(string? FirstName, string? LastName, DateOnly? DateOfBirth,
     string? PhoneNumber, string? Email, bool? TermsAccepted, bool? PrivacyConsent, Guid? CategoryId = null);
+public sealed record MemberRegistrationResult(MemberRegistrationResponse? Member, Guid? ExistingMemberId);
 // Retain the existing top-level member fields for consumers of the original endpoint.
 public sealed record MemberRegistrationResponse(MemberResponse Member, bool ConfirmationEmailSent)
 {
@@ -45,7 +46,7 @@ public sealed record MemberHistoryEntry(Guid Id, string Action, Guid? ActorAdmin
     string? PreviousStatus, string? Status, Guid? PreviousCategoryId, Guid? CategoryId);
 public interface IMemberOperations
 {
-    Task<MemberRegistrationResponse> RegisterAsync(MemberRegistration request, CancellationToken ct);
+    Task<MemberRegistrationResult> RegisterAsync(MemberRegistration request, CancellationToken ct);
     Task<Page<CategoryResponse>> CategoriesAsync(ListQuery query, CancellationToken ct);
     Task<CategoryResponse> CreateCategoryAsync(CategoryWrite request, CancellationToken ct);
     Task<CategoryResponse> UpdateCategoryAsync(Guid id, CategoryWrite request, CancellationToken ct);
