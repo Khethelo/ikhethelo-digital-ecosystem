@@ -21,8 +21,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 var bootstrap = args.Contains("--bootstrap-admin", StringComparer.Ordinal);
+var recoverAdmin = args.Contains("--recover-tenant-admin", StringComparer.Ordinal);
 var adoptDatabase = args.Contains("--adopt-existing-database", StringComparer.Ordinal);
-var builder = WebApplication.CreateBuilder(args.Where(x => x is not ("--bootstrap-admin" or "--adopt-existing-database")).ToArray());
+var builder = WebApplication.CreateBuilder(args.Where(x => x is not ("--bootstrap-admin" or "--recover-tenant-admin" or "--adopt-existing-database")).ToArray());
 var renderPort = builder.Configuration["PORT"];
 if (!string.IsNullOrEmpty(renderPort))
 {
@@ -77,6 +78,7 @@ builder.Services.AddScoped<IAdministratorAuthentication, AdministratorAuthentica
 builder.Services.AddScoped<IChangeOwnPassword, ChangeOwnPasswordService>();
 builder.Services.AddScoped<IAdminUserManagement, AdminUserManagement>();
 builder.Services.AddScoped<BootstrapAdministrator>();
+builder.Services.AddScoped<RecoverTenantAdministrator>();
 builder.Services.AddScoped<ExistingDatabaseAdoption>();
 builder.Services.AddScoped<IMemberOperations, MemberOperations>();
 builder.Services.AddScoped<INtmOperations, IKhethelo.Digital.Infrastructure.Ntm.NtmOperations>();
@@ -164,6 +166,16 @@ builder.Services.AddRateLimiter(options =>
 });
 
 var app = builder.Build();
+if ((bootstrap ? 1 : 0) + (recoverAdmin ? 1 : 0) + (adoptDatabase ? 1 : 0) > 1)
+{
+    Console.Error.WriteLine("Run each database administration command separately."); Environment.ExitCode = 1;
+    await app.DisposeAsync(); return;
+}
+if (recoverAdmin)
+{
+    Environment.ExitCode = await BootstrapConsole.RunAsync(app.Services, builder.Configuration["tenant"] ?? "ESHL", recovery: true);
+    await app.DisposeAsync(); return;
+}
 if (adoptDatabase)
 {
     if (bootstrap) { Console.Error.WriteLine("Run database adoption and administrator bootstrap separately."); Environment.ExitCode = 1; }

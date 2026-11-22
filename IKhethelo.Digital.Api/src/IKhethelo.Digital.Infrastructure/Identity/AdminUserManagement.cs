@@ -150,3 +150,26 @@ public sealed class BootstrapAdministrator(DigitalDbContext db, IPasswordHasher<
         await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct); return admin.Id;
     }
 }
+
+// Trusted-console recovery only: callers must verify the database and operator intent.
+public sealed class RecoverTenantAdministrator(DigitalDbContext db, IPasswordHasher<AdminUser> hasher, TimeProvider clock)
+{
+    public async Task<Guid> ExecuteAsync(string tenantCode, string email, string password, CancellationToken ct)
+    {
+        AdministratorValidation.Email(email); AdministratorValidation.Password(password);
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        var tenant = (await db.Tenants.FromSqlInterpolated($"SELECT * FROM tenants WHERE code = {tenantCode} FOR UPDATE").ToListAsync(ct)).SingleOrDefault();
+        if (tenant?.IsActive != true) throw RequestFailure.NotFound();
+        var normalized = Validation.NormalizeEmail(email);
+        if (await db.AdminUsers.AnyAsync(x => x.NormalizedEmail == normalized, ct)) throw RequestFailure.Conflict();
+        var now = clock.GetUtcNow();
+        var admin = new AdminUser { Id = Guid.NewGuid(), TenantId = tenant.Id, Email = email.Trim(), NormalizedEmail = normalized,
+            Role = AdminRole.TenantAdmin, IsActive = true, CreatedAtUtc = now, UpdatedAtUtc = now };
+        admin.PasswordHash = hasher.HashPassword(admin, password);
+        db.AdminUsers.Add(admin);
+        db.AuditLogs.Add(new AuditLog { Id = Guid.NewGuid(), TenantId = tenant.Id, ActorAdminUserId = admin.Id,
+            Action = "RecoverTenantAdministrator", EntityType = "AdminUser", EntityId = admin.Id, CreatedAtUtc = now,
+            CorrelationId = Guid.NewGuid().ToString(), MetadataJson = "{\"provisioningMethod\":\"trusted-console-recovery\"}" });
+        await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct); return admin.Id;
+    }
+}

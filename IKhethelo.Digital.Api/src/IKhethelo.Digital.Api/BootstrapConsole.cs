@@ -8,7 +8,7 @@ namespace IKhethelo.Digital.Api;
 
 internal static class BootstrapConsole
 {
-    public static async Task<int> RunAsync(IServiceProvider services, string tenantCode)
+    public static async Task<int> RunAsync(IServiceProvider services, string tenantCode, bool recovery = false)
     {
         if (Console.IsInputRedirected)
         {
@@ -18,29 +18,41 @@ internal static class BootstrapConsole
         try
         {
             using var scope = services.CreateScope();
-            if ((await scope.ServiceProvider.GetRequiredService<DigitalDbContext>().Database.GetPendingMigrationsAsync()).Any())
+            var db = scope.ServiceProvider.GetRequiredService<DigitalDbContext>();
+            if ((await db.Database.GetPendingMigrationsAsync()).Any())
             {
                 Console.Error.WriteLine("Database setup is incomplete. If the database was installed from baseline SQL, first run --adopt-existing-database; then run dotnet ef database update before bootstrap.");
                 return 1;
+            }
+            if (recovery)
+            {
+                var connection = (Npgsql.NpgsqlConnection)db.Database.GetDbConnection();
+                Console.WriteLine($"Recovery target: host {connection.Host}, database {connection.Database}, tenant {tenantCode}.");
+                Console.Write($"Type RECOVER {tenantCode} to confirm this target: ");
+                if (Console.ReadLine() != $"RECOVER {tenantCode}") { Console.Error.WriteLine("Recovery cancelled."); return 1; }
             }
         }
         catch (Exception)
         {
             Console.Error.WriteLine("Cannot check database setup. Verify the protected connection string and PostgreSQL availability before bootstrap."); return 1;
         }
-        Console.Write($"Initial TenantAdmin for {tenantCode}. Email: "); var email = Console.ReadLine();
+        Console.Write($"{(recovery ? "Recovery" : "Initial")} TenantAdmin for {tenantCode}. Email: "); var email = Console.ReadLine();
         Console.Write("Password (8–128 characters, with a digit and special character): "); var password = ReadPassword();
         Console.Write("Confirm password: "); var confirmation = ReadPassword();
         if (password != confirmation) { Console.Error.WriteLine("Passwords do not match."); return 1; }
         try
         {
             using var scope = services.CreateScope();
-            var id = await scope.ServiceProvider.GetRequiredService<BootstrapAdministrator>().ExecuteAsync(tenantCode, email ?? "", password, CancellationToken.None);
+            var id = recovery
+                ? await scope.ServiceProvider.GetRequiredService<RecoverTenantAdministrator>().ExecuteAsync(tenantCode, email ?? "", password, CancellationToken.None)
+                : await scope.ServiceProvider.GetRequiredService<BootstrapAdministrator>().ExecuteAsync(tenantCode, email ?? "", password, CancellationToken.None);
             Console.WriteLine($"Administrator {id} created and audited. Use POST /api/v1/auth/login to sign in."); return 0;
         }
         catch (RequestFailure failure)
         {
-            Console.Error.WriteLine(failure.Status == 409 ? "Bootstrap refused: the tenant already has an administrator or the email is already in use." : failure.Message); return 1;
+            Console.Error.WriteLine(failure.Status == 409
+                ? recovery ? "Recovery refused: the email is already in use." : "Bootstrap refused: the tenant already has an administrator or the email is already in use."
+                : failure.Message); return 1;
         }
         catch (Exception)
         {

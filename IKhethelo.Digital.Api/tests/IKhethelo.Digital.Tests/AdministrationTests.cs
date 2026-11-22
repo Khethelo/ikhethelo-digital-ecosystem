@@ -16,6 +16,28 @@ namespace IKhethelo.Digital.Tests;
 [Collection("PostgreSQL")]
 public sealed class AdministrationTests(ApiFixture fixture)
 {
+    [Fact]
+    public async Task ConsoleRecoveryCreatesAuditedTenantAdministratorWithoutChangingExistingAccounts()
+    {
+        var email = Email(); var password = Password();
+        await using var db = fixture.Db();
+        var existing = await db.AdminUsers.AsNoTracking().SingleAsync(x => x.Id == fixture.TenantAdminId);
+        var recovery = new RecoverTenantAdministrator(db, new PasswordHasher<AdminUser>(), TimeProvider.System);
+        var id = await recovery.ExecuteAsync("ESHL", email, password, CancellationToken.None);
+        var created = await db.AdminUsers.AsNoTracking().SingleAsync(x => x.Id == id);
+        Assert.Equal(fixture.Eshl, created.TenantId);
+        Assert.Equal(AdminRole.TenantAdmin, created.Role);
+        Assert.True(created.IsActive);
+        Assert.NotEqual(PasswordVerificationResult.Failed, new PasswordHasher<AdminUser>().VerifyHashedPassword(created, created.PasswordHash, password));
+        Assert.True(await db.AuditLogs.AnyAsync(x => x.EntityId == id && x.Action == "RecoverTenantAdministrator" && x.TenantId == fixture.Eshl));
+        var after = await db.AdminUsers.AsNoTracking().SingleAsync(x => x.Id == existing.Id);
+        Assert.Equal(existing.PasswordHash, after.PasswordHash);
+        Assert.Equal(existing.Role, after.Role);
+        Assert.Equal(existing.IsActive, after.IsActive);
+        await Assert.ThrowsAsync<RequestFailure>(() => recovery.ExecuteAsync("ESHL", email.ToUpperInvariant(), password, CancellationToken.None));
+        using var client = await Auth(email, password);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/admin-users")).StatusCode);
+    }
     private const string Tenant = "/api/v1/admin/tenants/ESHL";
     private static string Email() => Guid.NewGuid().ToString("N") + "@example.com";
     private static string Password() => "Random-" + Guid.NewGuid().ToString("N");
