@@ -20,8 +20,9 @@ public sealed class MembershipQueries(TenantData data, AuditWriter audit) : IMem
         if (query.Search?.Trim() is { Length: > 0 } search)
         {
             var normalized = Validation.NormalizeEmail(search);
+            var phoneSearch = Validation.NormalizePhone(search, data.Access.TenantCode == "ESHL");
             rows = rows.Where(x => x.FirstName.ToUpper().Contains(normalized) || x.LastName.ToUpper().Contains(normalized) ||
-                x.NormalizedEmail.Contains(normalized) || x.NormalizedPhoneNumber.Contains(search));
+                x.NormalizedEmail.Contains(normalized) || x.PhoneNumber.Contains(search) || x.NormalizedPhoneNumber.Contains(phoneSearch));
         }
         var count = await rows.LongCountAsync(ct);
         // A long offset avoids integer overflow; empty pages need no database offset.
@@ -29,12 +30,12 @@ public sealed class MembershipQueries(TenantData data, AuditWriter audit) : IMem
         var items = offset >= count ? [] : await rows.OrderByDescending(x => x.SubmittedAtUtc).ThenBy(x => x.Id)
             .Skip((int)offset).Take(query.PageSize).ToListAsync(ct);
         await audit.ReadAsync("MembershipApplication", null, ct);
-        return new(items.Select(x => x.Response()).ToArray(), query.Page, query.PageSize, count);
+        return new(items.Select(x => x.Response() with { PhoneNumber = Validation.DisplayPhone(x.PhoneNumber, data.Access.TenantCode == "ESHL") }).ToArray(), query.Page, query.PageSize, count);
     }
     public async Task<ApplicationResponse> ApplicationAsync(Guid id, CancellationToken ct)
     {
         var row = await data.Applications.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw RequestFailure.NotFound();
-        await audit.ReadAsync("MembershipApplication", id, ct); return row.Response();
+        await audit.ReadAsync("MembershipApplication", id, ct); return row.Response() with { PhoneNumber = Validation.DisplayPhone(row.PhoneNumber, data.Access.TenantCode == "ESHL") };
     }
     public async Task<Page<MemberResponse>> MembersAsync(ListQuery query, CancellationToken ct)
     {
@@ -44,18 +45,19 @@ public sealed class MembershipQueries(TenantData data, AuditWriter audit) : IMem
         if (query.Search?.Trim() is { Length: > 0 } search)
         {
             var normalized = Validation.NormalizeEmail(search);
+            var phoneSearch = Validation.NormalizePhone(search, data.Access.TenantCode == "ESHL");
             rows = rows.Where(x => x.FirstName.ToUpper().Contains(normalized) || x.LastName.ToUpper().Contains(normalized) ||
-                x.NormalizedEmail.Contains(normalized) || x.NormalizedPhoneNumber.Contains(search) || x.MemberNumber.ToUpper().Contains(normalized));
+                x.NormalizedEmail.Contains(normalized) || x.PhoneNumber.Contains(search) || x.NormalizedPhoneNumber.Contains(phoneSearch) || x.MemberNumber.ToUpper().Contains(normalized));
         }
         var count = await rows.LongCountAsync(ct); var offset = ((long)query.Page - 1) * query.PageSize;
         var items = offset >= count ? [] : await rows.OrderByDescending(x => x.JoinedAtUtc).ThenBy(x => x.Id)
             .Skip((int)offset).Take(query.PageSize).ToListAsync(ct);
         await audit.ReadAsync("Member", null, ct);
-        return new(items.Select(x => x.Response()).ToArray(), query.Page, query.PageSize, count);
+        return new(items.Select(x => x.Response() with { PhoneNumber = Validation.DisplayPhone(x.PhoneNumber, data.Access.TenantCode == "ESHL") }).ToArray(), query.Page, query.PageSize, count);
     }
     public async Task<MemberResponse> MemberAsync(Guid id, CancellationToken ct)
     {
         var row = await data.Members.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct) ?? throw RequestFailure.NotFound();
-        await audit.ReadAsync("Member", id, ct); return row.Response();
+        await audit.ReadAsync("Member", id, ct); return row.Response() with { PhoneNumber = Validation.DisplayPhone(row.PhoneNumber, data.Access.TenantCode == "ESHL") };
     }
 }

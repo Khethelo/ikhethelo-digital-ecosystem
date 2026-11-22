@@ -38,7 +38,7 @@ export const emailAddress: ValidatorFn = (control: AbstractControl): ValidationE
 };
 export const canonicalPhone: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
   const value = String(control.value ?? '');
-  return /^\+[1-9][0-9]{7,14}$/.exec(value)?.[0] === value ? null : { phone: true };
+  return /^(?:0[1-9][0-9]{8}|\+[1-9][0-9]{7,14})$/.exec(value)?.[0] === value ? null : { phone: true };
 };
 export const codepointMaxLength = (maximum: number): ValidatorFn => control =>
   Array.from(String(control.value ?? '')).length <= maximum ? null : { length: true };

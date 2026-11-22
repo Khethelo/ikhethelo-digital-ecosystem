@@ -30,7 +30,7 @@ export function apiIssue(error: unknown, context: 'application' | 'login' | 'rev
   const fields: Record<string, string[]> = Object.create(null);
   const safeFields: Record<string, string> = {
     firstName: 'Use 2 to 100 characters.', lastName: 'Use 2 to 100 characters.',
-    email: 'Enter a valid email address.', phoneNumber: 'Use an international phone number, for example +27821234567.',
+    email: 'Enter a valid email address.', phoneNumber: 'Enter a valid phone number, for example 0843190994.',
     dateOfBirth: 'Enter a valid date of birth. Members must be at least 18 years old.',
     termsAccepted: 'Membership terms must be accepted.', privacyConsent: 'Privacy consent is required.',
     confirmPassword: 'Passwords do not match.', currentPassword: 'Current password is incorrect.',

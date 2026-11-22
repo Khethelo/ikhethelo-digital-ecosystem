@@ -18,12 +18,13 @@ public sealed class MemberAdministration(DigitalDbContext db, TenantData data, A
     }
     public async Task<MemberResponse> UpdateAsync(Guid id, MemberUpdate request, CancellationToken ct)
     {
-        Validation.Member(request);
+        var localPhone = data.Access.TenantCode == "ESHL";
+        Validation.Member(request, localPhone);
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         var member = await LockAsync(id, ct);
         member.FirstName = request.FirstName!.Trim(); member.LastName = request.LastName!.Trim();
         member.Email = request.Email!.Trim(); member.NormalizedEmail = Validation.NormalizeEmail(member.Email);
-        member.PhoneNumber = request.PhoneNumber!; member.NormalizedPhoneNumber = request.PhoneNumber!;
+        member.PhoneNumber = Validation.DisplayPhone(request.PhoneNumber!, localPhone); member.NormalizedPhoneNumber = Validation.NormalizePhone(request.PhoneNumber!, localPhone);
         await CheckAsync(member, ct); member.UpdatedAtUtc = clock.GetUtcNow();
         audit.Add("UpdateMember", "Member", id);
         await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct); return member.Response();

@@ -17,8 +17,9 @@ describe('membership eligibility and exact input rules', () => {
     expect(calendarDate('2000-02-29')).not.toBeNull();
     expect(isAdult('2027-01-01', '2026-11-06')).toBe(false);
   });
-  it('requires a canonical international phone without whitespace or trailing newline', () => {
-    for (const value of ['0843517720', '+27 843517720', '+27843517720\n', '+012345678']) expect(canonicalPhone(new FormControl(value))).not.toBeNull();
+  it('accepts local and international numbers without whitespace or trailing newline', () => {
+    for (const value of ['084351772', '+27 843517720', '+27843517720\n', '+012345678']) expect(canonicalPhone(new FormControl(value))).not.toBeNull();
+    expect(canonicalPhone(new FormControl('0843517720'))).toBeNull();
     expect(canonicalPhone(new FormControl('+27843517720'))).toBeNull();
   });
   it('counts Unicode code points and trims names', () => {

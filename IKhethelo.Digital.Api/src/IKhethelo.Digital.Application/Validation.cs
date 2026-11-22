@@ -7,6 +7,8 @@ namespace IKhethelo.Digital.Application;
 public static partial class Validation
 {
     public static string NormalizeEmail(string value) => value.Trim().ToUpperInvariant();
+    public static string NormalizePhone(string value, bool localPhone) => localPhone && LocalPhonePattern().IsMatch(value) ? "+27" + value[1..] : value;
+    public static string DisplayPhone(string value, bool localPhone) => localPhone && SouthAfricanPhonePattern().IsMatch(value) ? "0" + value[3..] : value;
     public static DateOnly LocalDate(TimeProvider clock) => DateOnly.FromDateTime(
         TimeZoneInfo.ConvertTime(clock.GetUtcNow(), TimeZoneInfo.FindSystemTimeZoneById("Africa/Johannesburg")).DateTime);
     public static bool IsAdult(DateOnly birth, DateOnly today) => birth <= today && birth.Year <= today.Year - 18 && birth.AddYears(18) <= today;
@@ -22,25 +24,25 @@ public static partial class Validation
             !MailAddress.TryCreate(email, out var address) || address.Address != email || !email.Contains('@'))
             errors["email"] = ["Enter a valid email of at most 320 characters."];
     }
-    private static void Contacts(Dictionary<string, string[]> errors, string? first, string? last, string? phone, string? email)
+    private static void Contacts(Dictionary<string, string[]> errors, string? first, string? last, string? phone, string? email, bool localPhone)
     {
         Name(errors, "firstName", first); Name(errors, "lastName", last); Email(errors, email);
-        if (phone is null || !PhonePattern().IsMatch(phone)) errors["phoneNumber"] = ["Use an international phone number, for example +27821234567."];
+        if (phone is null || !(PhonePattern().IsMatch(phone) || (localPhone && LocalPhonePattern().IsMatch(phone)))) errors["phoneNumber"] = [localPhone ? "Enter a valid phone number, for example 0843190994." : "Use an international phone number, for example +27821234567."];
     }
-    public static void Submission(ApplicationSubmission request, DateOnly today, bool requireAdult)
+    public static void Submission(ApplicationSubmission request, DateOnly today, bool requireAdult, bool localPhone = false)
     {
         var errors = new Dictionary<string, string[]>();
-        Contacts(errors, request.FirstName, request.LastName, request.PhoneNumber, request.Email);
+        Contacts(errors, request.FirstName, request.LastName, request.PhoneNumber, request.Email, localPhone);
         if (request.DateOfBirth is not { } birth || birth > today || (requireAdult && !IsAdult(birth, today)))
             errors["dateOfBirth"] = ["Enter a valid birth date; Es'hlahleni applicants must be at least 18."];
         if (request.TermsAccepted != true) errors["termsAccepted"] = ["Terms must be accepted."];
         if (request.PrivacyConsent != true) errors["privacyConsent"] = ["Privacy consent is required."];
         Throw(errors);
     }
-    public static void Member(MemberUpdate request)
+    public static void Member(MemberUpdate request, bool localPhone = false)
     {
         var errors = new Dictionary<string, string[]>();
-        Contacts(errors, request.FirstName, request.LastName, request.PhoneNumber, request.Email); Throw(errors);
+        Contacts(errors, request.FirstName, request.LastName, request.PhoneNumber, request.Email, localPhone); Throw(errors);
     }
     public static void Login(LoginRequest request)
     {
@@ -70,4 +72,8 @@ public static partial class Validation
     }
     [GeneratedRegex(@"\A\+[1-9][0-9]{7,14}\z", RegexOptions.CultureInvariant)]
     private static partial Regex PhonePattern();
+    [GeneratedRegex(@"\A0[1-9][0-9]{8}\z", RegexOptions.CultureInvariant)]
+    private static partial Regex LocalPhonePattern();
+    [GeneratedRegex(@"\A\+27[1-9][0-9]{8}\z", RegexOptions.CultureInvariant)]
+    private static partial Regex SouthAfricanPhonePattern();
 }

@@ -62,7 +62,7 @@ export class Field {
     if (errors['server']) return errors['server'].join(' ');
     if (errors['name']) return 'Use 2–100 characters, excluding surrounding spaces.';
     if (errors['email']) return 'Enter a valid email address of at most 320 characters.';
-    if (errors['phone']) return 'Use international format, for example +27821234567, without spaces.';
+    if (errors['phone']) return 'Enter a valid phone number, for example 0843190994, without spaces.';
     if (errors['date']) return 'Enter a valid date of birth that is not in the future.';
     if (errors['adult']) return 'You must be at least 18 years old to apply.';
     if (errors['maxlength'] || errors['length']) return 'The information is too long. Please shorten it.';

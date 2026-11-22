@@ -5,8 +5,8 @@ info:
   description: |
     Shared IKhethelo.Digital.Api HTTP contract including tenant administration.
     Reconciled with database/ikhethelo_digital_postgresql_baseline.sql.
-    Names require 2-100 trimmed characters; email limit is 320. Canonical E.164
-    phone validation is intentionally narrower than SQL varchar(50).
+    Names require 2-100 trimmed characters; email limit is 320. Phone numbers use
+    international format; ESHL also accepts South African local format.
     Public alias eshlahleni resolves server-side to ESHL. No DTO accepts/returns TenantId.
     Protected routes require active identity and tenant. TenantAdmin must match the
     selected tenant; IKhetheloAdmin needs explicit CrossTenantMembership policy and
@@ -1766,9 +1766,9 @@ components:
       description: Trim; invariant uppercase for normalized comparison. Matches baseline varchar(320); normalized value must also fit.
     Phone:
       type: string
-      pattern: '^\+[1-9][0-9]{7,14}$'
+      pattern: '^(\+[1-9][0-9]{7,14}|0[1-9][0-9]{8})$'
       maxLength: 16
-      description: Canonical international E.164 representation; no spaces.
+      description: International E.164 format; ESHL also accepts a ten-digit South African number starting with 0. No spaces.
     ApplicationStatus:
       type: string
       enum: [Pending, Approved, Rejected, AwaitingInPersonCompletion, Completed, LegacyClosed]

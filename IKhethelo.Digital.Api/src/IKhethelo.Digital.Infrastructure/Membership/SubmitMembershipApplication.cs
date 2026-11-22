@@ -10,16 +10,18 @@ public sealed class SubmitMembershipApplication(DigitalDbContext db, TenantData 
 {
     public async Task<SubmissionReceipt?> ExecuteAsync(ApplicationSubmission request, CancellationToken ct)
     {
-        Validation.Submission(request, Validation.LocalDate(clock), rules.For(data.Access.TenantCode).RequireAdult);
+        var localPhone = data.Access.TenantCode == "ESHL";
+        Validation.Submission(request, Validation.LocalDate(clock), rules.For(data.Access.TenantCode).RequireAdult, localPhone);
         var email = request.Email!.Trim(); var normalized = Validation.NormalizeEmail(email);
+        var phone = Validation.NormalizePhone(request.PhoneNumber!, localPhone);
         if (await data.Applications.AnyAsync(x => x.Status == MembershipApplicationStatus.Pending &&
-                (x.NormalizedEmail == normalized || x.NormalizedPhoneNumber == request.PhoneNumber), ct)) return null;
-        if (await data.Members.AnyAsync(x => x.Status == MemberStatus.Active && (x.NormalizedEmail == normalized || x.NormalizedPhoneNumber == request.PhoneNumber), ct)) return null;
+                (x.NormalizedEmail == normalized || x.NormalizedPhoneNumber == phone), ct)) return null;
+        if (await data.Members.AnyAsync(x => x.Status == MemberStatus.Active && (x.NormalizedEmail == normalized || x.NormalizedPhoneNumber == phone), ct)) return null;
         var now = clock.GetUtcNow();
         var application = new MembershipApplication
         {
             Id = Guid.NewGuid(), TenantId = data.Access.TenantId, FirstName = request.FirstName!.Trim(), LastName = request.LastName!.Trim(),
-            DateOfBirth = request.DateOfBirth!.Value, PhoneNumber = request.PhoneNumber!, NormalizedPhoneNumber = request.PhoneNumber!,
+            DateOfBirth = request.DateOfBirth!.Value, PhoneNumber = Validation.DisplayPhone(request.PhoneNumber!, localPhone), NormalizedPhoneNumber = phone,
             Email = email, NormalizedEmail = normalized, TermsAccepted = true, PrivacyConsent = true,
             Status = MembershipApplicationStatus.Pending, SubmittedAtUtc = now, UpdatedAtUtc = now
         };

@@ -153,6 +153,52 @@ public sealed class IntegrationTests(ApiFixture fixture)
         await SubmitAsync();
     }
     [Fact]
+    public async Task EshlLocalPhoneIsStoredLocallyAndMatchesInternationalDuplicates()
+    {
+        var suffix = Random.Shared.NextInt64(100000000, 999999999).ToString();
+        var local = "0" + suffix; var international = "+27" + suffix;
+        var submission = Submission() with { PhoneNumber = local };
+        var id = await SubmitAsync(submission);
+        await using (var db = fixture.Db())
+        {
+            var saved = await db.Applications.AsNoTracking().SingleAsync(x => x.Id == id);
+            Assert.Equal(local, saved.PhoneNumber);
+            Assert.Equal(international, saved.NormalizedPhoneNumber);
+        }
+        Assert.Equal(HttpStatusCode.Conflict, (await fixture.Client.PostAsJsonAsync(Public, Submission() with { PhoneNumber = international })).StatusCode);
+        using var admin = await AuthAsync();
+        Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync($"{Admin}/membership-applications/{id}/activate", new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await fixture.Client.PostAsJsonAsync(Public, Submission() with { PhoneNumber = local })).StatusCode);
+        var search = await admin.GetAsync($"{Admin}/members?search={local}");
+        Assert.Equal(HttpStatusCode.OK, search.StatusCode);
+        Assert.Contains((await JsonAsync(search)).GetProperty("items").EnumerateArray(), x => x.GetProperty("phoneNumber").GetString() == local);
+
+        var directPhone = "0" + Random.Shared.NextInt64(100000000, 999999999);
+        var direct = await admin.PostAsJsonAsync($"{Admin}/members", new MemberRegistration("Jane", "Member", new(1990, 1, 1), directPhone, Guid.NewGuid() + "@example.com", true, true));
+        Assert.Equal(HttpStatusCode.Created, direct.StatusCode);
+        var directId = (await JsonAsync(direct)).GetProperty("memberId").GetGuid();
+        var updatedPhone = "0" + Random.Shared.NextInt64(100000000, 999999999);
+        var update = await admin.PutAsJsonAsync($"{Admin}/members/{directId}", new MemberUpdate("Jane", "Member", updatedPhone, Guid.NewGuid() + "@example.com"));
+        Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+        await using (var db = fixture.Db())
+        {
+            var member = await db.Members.AsNoTracking().SingleAsync(x => x.Id == directId);
+            Assert.Equal(updatedPhone, member.PhoneNumber);
+            Assert.Equal("+27" + updatedPhone[1..], member.NormalizedPhoneNumber);
+        }
+
+        var legacy = Submission() with { PhoneNumber = "+27" + Random.Shared.NextInt64(100000000, 999999999) };
+        var legacyId = await SubmitAsync(legacy);
+        await using (var db = fixture.Db())
+        {
+            var oldRecord = await db.Applications.SingleAsync(x => x.Id == legacyId);
+            oldRecord.PhoneNumber = legacy.PhoneNumber!;
+            await db.SaveChangesAsync();
+        }
+        Assert.Equal(HttpStatusCode.Conflict, (await fixture.Client.PostAsJsonAsync(Public, Submission() with { PhoneNumber = "0" + legacy.PhoneNumber![3..] })).StatusCode);
+        Assert.Equal((HttpStatusCode)422, (await fixture.Client.PostAsJsonAsync("/api/v1/public/second/membership-applications", Submission() with { PhoneNumber = local })).StatusCode);
+    }
+    [Fact]
     public async Task DuplicateSubmissionRaceCreatesOneApplication()
     {
         var submission = Submission();

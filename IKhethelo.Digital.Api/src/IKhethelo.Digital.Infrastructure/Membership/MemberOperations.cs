@@ -24,20 +24,22 @@ public sealed class MemberOperations(DigitalDbContext db, TenantData data, Audit
     }
     public async Task<MemberRegistrationResult> RegisterAsync(MemberRegistration request, CancellationToken ct)
     {
+        var localPhone = data.Access.TenantCode == "ESHL";
         Validation.Submission(new(request.FirstName, request.LastName, request.DateOfBirth, request.PhoneNumber,
-            request.Email, request.TermsAccepted, request.PrivacyConsent), Validation.LocalDate(clock), rules.For(data.Access.TenantCode).RequireAdult);
+            request.Email, request.TermsAccepted, request.PrivacyConsent), Validation.LocalDate(clock), rules.For(data.Access.TenantCode).RequireAdult, localPhone);
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         var category = await AvailableCategoryAsync(request.CategoryId, ct);
         var email = request.Email!.Trim(); var normalized = Validation.NormalizeEmail(email);
+        var phone = Validation.NormalizePhone(request.PhoneNumber!, localPhone);
         var pendingId = await data.Applications.Where(x => x.Status == MembershipApplicationStatus.Pending &&
-            (x.NormalizedEmail == normalized || x.NormalizedPhoneNumber == request.PhoneNumber)).Select(x => (Guid?)x.Id).FirstOrDefaultAsync(ct);
+            (x.NormalizedEmail == normalized || x.NormalizedPhoneNumber == phone)).Select(x => (Guid?)x.Id).FirstOrDefaultAsync(ct);
         if (pendingId is { } id)
         {
             if (data.Access.TenantCode == "ESHL") throw new PendingApplicationConflict(id);
             throw RequestFailure.Conflict();
         }
         var activeId = await data.Members.Where(x => x.Status == MemberStatus.Active &&
-            (x.NormalizedEmail == normalized || x.NormalizedPhoneNumber == request.PhoneNumber)).Select(x => (Guid?)x.Id).FirstOrDefaultAsync(ct);
+            (x.NormalizedEmail == normalized || x.NormalizedPhoneNumber == phone)).Select(x => (Guid?)x.Id).FirstOrDefaultAsync(ct);
         if (activeId is { } memberId)
         {
             if (data.Access.TenantCode == "ESHL") return new(null, memberId);
@@ -46,7 +48,7 @@ public sealed class MemberOperations(DigitalDbContext db, TenantData data, Audit
         var now = clock.GetUtcNow(); var actor = data.Access.ActorId ?? throw new RequestFailure(403, "Administrator access is required.");
         var application = new MembershipApplication { Id = Guid.NewGuid(), TenantId = data.Access.TenantId,
             FirstName = request.FirstName!.Trim(), LastName = request.LastName!.Trim(), DateOfBirth = request.DateOfBirth!.Value,
-            PhoneNumber = request.PhoneNumber!, NormalizedPhoneNumber = request.PhoneNumber!, Email = email, NormalizedEmail = normalized,
+            PhoneNumber = Validation.DisplayPhone(request.PhoneNumber!, localPhone), NormalizedPhoneNumber = phone, Email = email, NormalizedEmail = normalized,
             TermsAccepted = true, PrivacyConsent = true, Status = MembershipApplicationStatus.Approved,
             SubmittedAtUtc = now, UpdatedAtUtc = now, ReviewedAtUtc = now, ReviewedByAdminId = actor,
             ReviewNotes = "Registered directly by an authorized administrator." };
