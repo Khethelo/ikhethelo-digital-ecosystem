@@ -21,7 +21,7 @@ import { clubContent } from '../../content/club-content';
             <a routerLink="/membership" routerLinkActive="active" ariaCurrentWhenActive="page">Membership</a>
             <a routerLink="/faq" routerLinkActive="active" ariaCurrentWhenActive="page">House rules & FAQ</a>
             <a routerLink="/contact" routerLinkActive="active" ariaCurrentWhenActive="page">Contact</a>
-            <a routerLink="/admin/login">Admin sign in</a>
+            <a routerLink="/admin/login">Admin Login</a>
           </nav>
           <a class="button button--olive nav-join" routerLink="/join">Join the club <span aria-hidden="true">↗</span></a>
           <button class="menu-toggle" type="button" aria-controls="public-navigation" [attr.aria-expanded]="menuOpen()" (click)="menuOpen.set(!menuOpen())">{{ menuOpen() ? 'Close' : 'Menu' }}</button>
@@ -37,7 +37,7 @@ import { clubContent } from '../../content/club-content';
           <div><span class="footer-label">THE CLUB</span><div class="footer-links"><a routerLink="/about">Our story</a><a routerLink="/membership">Membership</a><a routerLink="/faq">House rules & FAQ</a><a routerLink="/contact">Get in touch</a></div></div>
           <div><span class="footer-label">MEMBERSHIP STARTS HERE</span><p>@for (line of content.contact.address; track line) { {{ line }}<br /> }</p><a [href]="content.contact.whatsAppUrl">WhatsApp {{ content.contact.whatsAppNumber }}</a><p class="footer-description">Apply online. <br />The club will review your application.</p><a class="text-link" routerLink="/join">Register for membership <span aria-hidden="true">↗</span></a><p class="footer-adult"><strong>18+ ONLY</strong> · 18+ registration.</p></div>
         </div>
-        <div class="footer-bottom"><span>© {{ year }} Es'hlahleni Social Club.</span><div><a routerLink="/membership-terms">Membership terms</a><a routerLink="/privacy">Privacy notice</a><a routerLink="/admin/login">Admin sign in ↗</a></div><span class="provider">Website by iKhethelo Digital</span></div>
+        <div class="footer-bottom"><span>© {{ year }} Es'hlahleni Social Club.</span><div><a routerLink="/membership-terms">Membership terms</a><a routerLink="/privacy">Privacy notice</a><a routerLink="/admin/login">Admin Login ↗</a></div><span class="provider">Website by iKhethelo Digital</span></div>
       </footer>
     </div>
   `,
